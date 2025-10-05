@@ -23,7 +23,7 @@ function Home() {
       icon: MessageSquare,
       color: "from-purple-500 to-pink-500",
       link: "/interview-practice",
-      features: ["Voice Interview", "Real-time Feedback", "Skill Quiz", "Unbiased Assessment"]
+      features: ["Real-time Feedback", "Skill Quiz", "Unbiased Assessment"]
     },
     {
       id: 3,
@@ -41,7 +41,7 @@ function Home() {
       icon: Briefcase,
       color: "from-orange-500 to-red-500",
       link: "/interview-prep",
-      features: ["Custom Questions", "HR & Technical Q&A", "Voice Training", "Mock Interviews"]
+      features: ["Voice Interview", "HR & Technical Q&A", "Custom Questions", "Mock Interviews"]
     }
   ];
 
