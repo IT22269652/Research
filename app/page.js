@@ -269,7 +269,7 @@ function Home() {
               <ul className="space-y-2 text-sm text-gray-400">
                 <li><a href="#about" className="hover:text-purple-400 transition">About Us</a></li>
                 <li><a href="/contact" className="hover:text-purple-400 transition">Contact</a></li>
-                <li><a href="#" className="hover:text-purple-400 transition">Privacy Policy</a></li>
+                <li><a href="/privacy-policy" className="hover:text-purple-400 transition">Privacy Policy</a></li>
                 <li><a href="#" className="hover:text-purple-400 transition">Terms of Service</a></li>
               </ul>
             </div>
