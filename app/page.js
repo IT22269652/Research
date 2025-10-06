@@ -37,7 +37,7 @@ function Home() {
     {
       id: 4,
       title: "Interview Preparation Assistant",
-      description: "AI-generated interview questions tailored to your job role and experience",
+      description: "AI-generated voice-based interview questions tailored to your job role and experience",
       icon: Briefcase,
       color: "from-orange-500 to-red-500",
       link: "/InterviewDashboard",
@@ -67,9 +67,9 @@ function Home() {
             
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center space-x-8">
-              <a href="#home" className="text-gray-300 hover:text-purple-400 transition">Home</a>
+              <a href="/" className="text-gray-300 hover:text-purple-400 transition">Home</a>
               <a href="#features" className="text-gray-300 hover:text-purple-400 transition">Features</a>
-              <a href="#about" className="text-gray-300 hover:text-purple-400 transition">About</a>
+              <a href="/about" className="text-gray-300 hover:text-purple-400 transition">About</a>
               <div className="flex items-center space-x-3">
                 <button 
                   onClick={() => window.location.href = '/auth/login'}
@@ -102,9 +102,9 @@ function Home() {
         {isMenuOpen && (
           <div className="md:hidden bg-slate-800/95 backdrop-blur-lg">
             <div className="px-4 pt-2 pb-4 space-y-2">
-              <a href="#home" className="block text-gray-300 hover:text-purple-400 py-2">Home</a>
+              <a href="/" className="block text-gray-300 hover:text-purple-400 py-2">Home</a>
               <a href="#features" className="block text-gray-300 hover:text-purple-400 py-2">Features</a>
-              <a href="#about" className="block text-gray-300 hover:text-purple-400 py-2">About</a>
+              <a href="/about" className="block text-gray-300 hover:text-purple-400 py-2">About</a>
               <button 
                 onClick={() => window.location.href = '/auth/login'}
                 className="w-full flex items-center justify-center space-x-2 text-gray-300 hover:text-purple-400 py-2 border border-gray-600 rounded-full mt-2"
@@ -260,14 +260,14 @@ function Home() {
                 <li><a href="/resume-builder" className="hover:text-purple-400 transition">Resume Builder</a></li>
                 <li><a href="/interview-practice" className="hover:text-purple-400 transition">Interview Practice</a></li>
                 <li><a href="/career-guidance" className="hover:text-purple-400 transition">Career Guidance</a></li>
-                <li><a href="/interview-prep" className="hover:text-purple-400 transition">Job Matching</a></li>
+                <li><a href="/InterviewDashboard" className="hover:text-purple-400 transition">Job Matching</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-white font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#about" className="hover:text-purple-400 transition">About Us</a></li>
+                <li><a href="/about" className="hover:text-purple-400 transition">About Us</a></li>
                 <li><a href="#" className="hover:text-purple-400 transition">Contact</a></li>
                 <li><a href="#" className="hover:text-purple-400 transition">Privacy Policy</a></li>
                 <li><a href="#" className="hover:text-purple-400 transition">Terms of Service</a></li>
