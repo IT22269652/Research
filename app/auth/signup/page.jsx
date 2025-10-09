@@ -17,11 +17,18 @@ import {
   UserPlus,
   Menu,
   X,
+  Lock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 export default function SignUp() {
   const [step, setStep] = useState("role");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+
   const [applicantForm, setApplicantForm] = useState({
     fullName: "",
     nameWithInitials: "",
@@ -29,12 +36,19 @@ export default function SignUp() {
     gender: "",
     contactNumber: "",
     email: "",
+    password: "",
+    confirmPassword: "",
   });
+
   const [companyForm, setCompanyForm] = useState({
     companyName: "",
     industry: "",
     registrationNumber: "",
     branchLocation: "",
+    email: "",
+    contactNumber: "",
+    password: "",
+    confirmPassword: "",
   });
 
   const sriLankanDistricts = [
@@ -65,28 +79,153 @@ export default function SignUp() {
     "Vavuniya",
   ];
 
+  // Validation Functions
+  const validateAge = (birthday) => {
+    const today = new Date();
+    const birthDate = new Date(birthday);
+    const age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      return age - 1 >= 16;
+    }
+    return age >= 16;
+  };
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateSriLankanPhone = (phone) => {
+    // Sri Lankan phone numbers: +94XXXXXXXXX or 0XXXXXXXXX (10 digits after 0 or 9 digits after +94)
+    const phoneRegex = /^(?:\+94|0)(?:7[0-9]|[1-9][0-9])\d{7}$/;
+    return phoneRegex.test(phone.replace(/\s/g, ""));
+  };
+
+  const validatePassword = (password) => {
+    return password.length >= 8;
+  };
+
   const handleApplicantChange = (e) => {
     const { name, value } = e.target;
     setApplicantForm((prev) => ({ ...prev, [name]: value }));
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handleCompanyChange = (e) => {
     const { name, value } = e.target;
     setCompanyForm((prev) => ({ ...prev, [name]: value }));
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handleGoBack = () => {
     setStep("role");
+    setErrors({});
   };
 
   const handleApplicantSubmit = (e) => {
     e.preventDefault();
+    const newErrors = {};
+
+    // Validate birthday
+    if (!applicantForm.birthday) {
+      newErrors.birthday = "Birthday is required";
+    } else if (!validateAge(applicantForm.birthday)) {
+      newErrors.birthday = "You must be at least 16 years old";
+    }
+
+    // Validate email
+    if (!applicantForm.email) {
+      newErrors.email = "Email is required";
+    } else if (!validateEmail(applicantForm.email)) {
+      newErrors.email =
+        "Please enter a valid email address (e.g., you@example.com)";
+    }
+
+    // Validate contact number
+    if (!applicantForm.contactNumber) {
+      newErrors.contactNumber = "Contact number is required";
+    } else if (!validateSriLankanPhone(applicantForm.contactNumber)) {
+      newErrors.contactNumber =
+        "Please enter a valid Sri Lankan phone number (e.g., 0771234567 or +94771234567)";
+    }
+
+    // Validate password
+    if (!applicantForm.password) {
+      newErrors.password = "Password is required";
+    } else if (!validatePassword(applicantForm.password)) {
+      newErrors.password = "Password must be at least 8 characters long";
+    }
+
+    // Validate confirm password
+    if (!applicantForm.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+    } else if (applicantForm.password !== applicantForm.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     console.log("Applicant Form:", applicantForm);
+    alert("Form submitted successfully!");
   };
 
   const handleCompanySubmit = (e) => {
     e.preventDefault();
+    const newErrors = {};
+
+    // Validate email
+    if (!companyForm.email) {
+      newErrors.email = "Email is required";
+    } else if (!validateEmail(companyForm.email)) {
+      newErrors.email =
+        "Please enter a valid email address (e.g., you@example.com)";
+    }
+
+    // Validate contact number
+    if (!companyForm.contactNumber) {
+      newErrors.contactNumber = "Contact number is required";
+    } else if (!validateSriLankanPhone(companyForm.contactNumber)) {
+      newErrors.contactNumber =
+        "Please enter a valid Sri Lankan phone number (e.g., 0771234567 or +94771234567)";
+    }
+
+    // Validate password
+    if (!companyForm.password) {
+      newErrors.password = "Password is required";
+    } else if (!validatePassword(companyForm.password)) {
+      newErrors.password = "Password must be at least 8 characters long";
+    }
+
+    // Validate confirm password
+    if (!companyForm.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+    } else if (companyForm.password !== companyForm.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     console.log("Company Form:", companyForm);
+    alert("Form submitted successfully!");
   };
 
   return (
@@ -336,9 +475,16 @@ export default function SignUp() {
                       value={applicantForm.birthday}
                       onChange={handleApplicantChange}
                       required
-                      className="w-full rounded-2xl bg-slate-900/60 border border-white/10 pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60"
+                      className={`w-full rounded-2xl bg-slate-900/60 border ${
+                        errors.birthday ? "border-red-500" : "border-white/10"
+                      } pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
                     />
                   </div>
+                  {errors.birthday && (
+                    <p className="text-red-400 text-xs mt-1">
+                      {errors.birthday}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -372,9 +518,18 @@ export default function SignUp() {
                       onChange={handleApplicantChange}
                       placeholder="+94 77 123 4567"
                       required
-                      className="w-full rounded-2xl bg-slate-900/60 border border-white/10 pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60"
+                      className={`w-full rounded-2xl bg-slate-900/60 border ${
+                        errors.contactNumber
+                          ? "border-red-500"
+                          : "border-white/10"
+                      } pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
                     />
                   </div>
+                  {errors.contactNumber && (
+                    <p className="text-red-400 text-xs mt-1">
+                      {errors.contactNumber}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -390,9 +545,90 @@ export default function SignUp() {
                       onChange={handleApplicantChange}
                       placeholder="you@example.com"
                       required
-                      className="w-full rounded-2xl bg-slate-900/60 border border-white/10 pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60"
+                      className={`w-full rounded-2xl bg-slate-900/60 border ${
+                        errors.email ? "border-red-500" : "border-white/10"
+                      } pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
                     />
                   </div>
+                  {errors.email && (
+                    <p className="text-red-400 text-xs mt-1">{errors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">
+                    Create Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={applicantForm.password}
+                      onChange={handleApplicantChange}
+                      placeholder="••••••••"
+                      required
+                      className={`w-full rounded-2xl bg-slate-900/60 border ${
+                        errors.password ? "border-red-500" : "border-white/10"
+                      } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-red-400 text-xs mt-1">
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmPassword"
+                      value={applicantForm.confirmPassword}
+                      onChange={handleApplicantChange}
+                      placeholder="••••••••"
+                      required
+                      className={`w-full rounded-2xl bg-slate-900/60 border ${
+                        errors.confirmPassword
+                          ? "border-red-500"
+                          : "border-white/10"
+                      } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="text-red-400 text-xs mt-1">
+                      {errors.confirmPassword}
+                    </p>
+                  )}
                 </div>
 
                 <button
@@ -513,6 +749,132 @@ export default function SignUp() {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      name="email"
+                      value={companyForm.email}
+                      onChange={handleCompanyChange}
+                      placeholder="company@example.com"
+                      required
+                      className={`w-full rounded-2xl bg-slate-900/60 border ${
+                        errors.email ? "border-red-500" : "border-white/10"
+                      } pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
+                    />
+                  </div>
+                  {errors.email && (
+                    <p className="text-red-400 text-xs mt-1">{errors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">
+                    Contact Number
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="tel"
+                      name="contactNumber"
+                      value={companyForm.contactNumber}
+                      onChange={handleCompanyChange}
+                      placeholder="+94 11 234 5678"
+                      required
+                      className={`w-full rounded-2xl bg-slate-900/60 border ${
+                        errors.contactNumber
+                          ? "border-red-500"
+                          : "border-white/10"
+                      } pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
+                    />
+                  </div>
+                  {errors.contactNumber && (
+                    <p className="text-red-400 text-xs mt-1">
+                      {errors.contactNumber}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">
+                    Create Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={companyForm.password}
+                      onChange={handleCompanyChange}
+                      placeholder="••••••••"
+                      required
+                      className={`w-full rounded-2xl bg-slate-900/60 border ${
+                        errors.password ? "border-red-500" : "border-white/10"
+                      } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-red-400 text-xs mt-1">
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmPassword"
+                      value={companyForm.confirmPassword}
+                      onChange={handleCompanyChange}
+                      placeholder="••••••••"
+                      required
+                      className={`w-full rounded-2xl bg-slate-900/60 border ${
+                        errors.confirmPassword
+                          ? "border-red-500"
+                          : "border-white/10"
+                      } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="text-red-400 text-xs mt-1">
+                      {errors.confirmPassword}
+                    </p>
+                  )}
                 </div>
 
                 <button
