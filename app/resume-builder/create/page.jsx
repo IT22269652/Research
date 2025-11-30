@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Save, Download, Eye, Plus, X, Sparkles, Loader2, User, Mail, Phone, MapPin, Briefcase, GraduationCap, Code, Award, Github, ExternalLink, FileText } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 
 export default function ResumeBuilderCreate() {
   const [activeTab, setActiveTab] = useState('form');
@@ -156,6 +158,21 @@ export default function ResumeBuilderCreate() {
     
     return topicDescriptions[topic.toLowerCase()] || `${topic} application`;
   };
+
+  useEffect(() => {
+  // Auto-load last saved resume
+  const saved = localStorage.getItem('resume_data_v1');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      setFormData(parsed.formData);
+      setSelectedTemplate(parsed.selectedTemplate || 'modern');
+      console.log('Resume loaded from localStorage');
+    } catch (e) {
+      console.log('No valid saved resume found');
+    }
+  }
+}, []);
 
   const fetchGithubProjects = async () => {
     if (!githubUsername.trim()) {
@@ -326,15 +343,29 @@ export default function ResumeBuilderCreate() {
     }, 2000);
   };
 
-  const saveResume = () => {
-    setIsSaving(true);
-    // Simulate save
-    setTimeout(() => {
-      setIsSaving(false);
-      alert('Resume saved successfully!');
-    }, 1000);
-  };
+const saveResume = async () => {
+  setIsSaving(true);
+  try {
+    const response = await fetch('/api/resume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ formData, selectedTemplate }),
+    });
 
+    const result = await response.json();
+
+    if (result.success) {
+      toast.success(result.message);
+    } else {
+      toast.info(result.message || 'Saved locally only.');
+    }
+  } catch (error) {
+    console.error('Save failed:', error);
+    toast.info('Saved locally only.');
+  } finally {
+    setIsSaving(false);
+  }
+};
   const downloadPDF = async () => {
     setIsGenerating(true);
     try {
@@ -1200,6 +1231,27 @@ export default function ResumeBuilderCreate() {
           </div>
         </div>
       </div>
+
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
+        gutter={12}
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#1e1b4b',
+            color: '#fff',
+            borderRadius: '12px',
+            padding: '16px 24px',
+            fontSize: '16px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+          },
+          success: {
+            icon: 'Saved',
+            style: { background: '#10b981' },
+          },
+        }}
+      />
 
       <section className="px-4 sm:px-6 lg:px-8 pt-10 pb-20">
         <div className="max-w-7xl mx-auto">
