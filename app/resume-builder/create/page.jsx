@@ -6,6 +6,10 @@ import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { Toaster } from 'react-hot-toast';
 
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+
+
 export default function ResumeBuilderCreate() {
   const [activeTab, setActiveTab] = useState('form');
   const [isSaving, setIsSaving] = useState(false);
@@ -45,6 +49,68 @@ export default function ResumeBuilderCreate() {
   const [githubUsername, setGithubUsername] = useState('');
   const [isFetchingGithub, setIsFetchingGithub] = useState(false);
   const [githubProjects, setGithubProjects] = useState([]);
+
+const downloadPDF = async () => {
+  setIsGenerating(true);
+
+  try {
+    const element = document.getElementById('resume-pdf-content');
+    if (!element) return toast.error('Preview not ready!');
+
+    const html2canvas = (await import('html2canvas-pro')).default;
+    const { jsPDF } = await import('jspdf');
+
+    // Capture full content with high quality
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      allowTaint: true,
+      width: element.scrollWidth,
+      height: element.scrollHeight,
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();   // 210mm
+    const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+
+    const imgWidth = canvas.width / 2;   // scale 2 නිසා
+    const imgHeight = canvas.height / 2;
+
+    const ratio = pdfWidth / imgWidth;
+    const scaledHeight = imgHeight * ratio;
+
+    let positionY = 0;
+
+    // Multi-page support (content එක වැඩි නම්)
+    while (positionY < scaledHeight) {
+      if (positionY > 0) pdf.addPage();
+
+      pdf.addImage(
+        imgData,
+        'PNG',
+        0,                    // x
+        -positionY,           // y (negative to scroll down)
+        pdfWidth,             // width
+        scaledHeight          // full height
+      );
+
+      positionY += pdfHeight;
+    }
+
+    pdf.save(`${formData.personalInfo.fullName || 'My_Resume'}_A4.pdf`);
+    toast.success('PDF downloaded — Perfect A4 size!');
+
+  } catch (err) {
+    console.error(err);
+    toast.error('Failed to generate PDF');
+  } finally {
+    setIsGenerating(false);
+  }
+};
 
   const handleInputChange = (section, field, value) => {
     setFormData(prev => ({
@@ -159,20 +225,30 @@ export default function ResumeBuilderCreate() {
     return topicDescriptions[topic.toLowerCase()] || `${topic} application`;
   };
 
-  useEffect(() => {
-  // Auto-load last saved resume
-  const saved = localStorage.getItem('resume_data_v1');
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      setFormData(parsed.formData);
-      setSelectedTemplate(parsed.selectedTemplate || 'modern');
-      console.log('Resume loaded from localStorage');
-    } catch (e) {
-      console.log('No valid saved resume found');
-    }
-  }
+useEffect(() => {
+  // Create new resume → force clean state
+  setFormData({
+    personalInfo: {
+      fullName: "",
+      email: "",
+      phone: "",
+      address: "",
+      linkedin: "",
+      github: "",
+      website: ""
+    },
+    summary: "",
+    skills: "",
+    experience: [],
+    education: [],
+    projects: [],
+    certifications: []
+  });
+
+  setSelectedTemplate("modern");
+
 }, []);
+
 
   const fetchGithubProjects = async () => {
     if (!githubUsername.trim()) {
@@ -344,309 +420,46 @@ export default function ResumeBuilderCreate() {
   };
 
 const saveResume = async () => {
+  if (!formData.personalInfo?.fullName?.trim()) {
+    toast.error('Please enter your full name!');
+    return;
+  }
+
   setIsSaving(true);
+
   try {
-    const response = await fetch('/api/resume', {
+    const res = await fetch('/api/resume', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ formData, selectedTemplate }),
+      body: JSON.stringify({
+        personalInfo: formData.personalInfo,
+        summary: formData.summary,
+        skills: formData.skills,
+        experience: formData.experience,
+        education: formData.education,
+        projects: formData.projects,
+        certifications: formData.certifications,
+        selectedTemplate
+      }),
     });
 
-    const result = await response.json();
+    if (res.ok) {
+      const saved = await res.json();
+      toast.success('Resume saved successfully!', { duration: 4000 });
 
-    if (result.success) {
-      toast.success(result.message);
+      window.history.replaceState(null, '', `/resume-builder/edit/${saved._id}`);
+
+      document.title = `${formData.personalInfo.fullName.trim()} - Resume Builder`;
     } else {
-      toast.info(result.message || 'Saved locally only.');
+      throw new Error();
     }
-  } catch (error) {
-    console.error('Save failed:', error);
-    toast.info('Saved locally only.');
+  } catch (err) {
+    toast.error('Save failed — please try again');
   } finally {
     setIsSaving(false);
   }
 };
-  const downloadPDF = async () => {
-    setIsGenerating(true);
-    try {
-      // Create a completely isolated PDF using jsPDF directly
-      const jsPDF = (await import('jspdf')).default;
-      
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
 
-      const { personalInfo, summary, skills, experience, education, projects, certifications } = formData;
-      
-      // Set font
-      pdf.setFont('helvetica');
-      
-      // Header
-      pdf.setFontSize(24);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(personalInfo.fullName || 'Your Name', 105, 30, { align: 'center' });
-      
-      // Contact info
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      let contactY = 40;
-      const contactInfo = [];
-      if (personalInfo.email) contactInfo.push(`Email: ${personalInfo.email}`);
-      if (personalInfo.phone) contactInfo.push(`Phone: ${personalInfo.phone}`);
-      if (personalInfo.address) contactInfo.push(`Address: ${personalInfo.address}`);
-      if (personalInfo.linkedin) contactInfo.push(`LinkedIn: ${personalInfo.linkedin}`);
-      if (personalInfo.github) contactInfo.push(`GitHub: ${personalInfo.github}`);
-      if (personalInfo.website) contactInfo.push(`Website: ${personalInfo.website}`);
-      
-      const contactText = contactInfo.join(' | ');
-      const contactLines = pdf.splitTextToSize(contactText, 190);
-      pdf.text(contactLines, 105, contactY, { align: 'center' });
-      
-      let currentY = contactY + (contactLines.length * 5) + 10;
-      
-      // Professional Summary
-      if (summary) {
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        const summaryTitle = selectedTemplate === 'classic' ? 'PROFESSIONAL SUMMARY' : 
-                            selectedTemplate === 'creative' ? '✨ About Me' : 'Professional Summary';
-        pdf.text(summaryTitle, 20, currentY);
-        currentY += 10;
-        
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        const summaryLines = pdf.splitTextToSize(summary, 170);
-        pdf.text(summaryLines, 20, currentY);
-        currentY += (summaryLines.length * 5) + 10;
-      }
-      
-      // Skills
-      if (skills) {
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        const skillsTitle = selectedTemplate === 'classic' ? 'TECHNICAL SKILLS' : 
-                           selectedTemplate === 'creative' ? '🛠️ Skills & Expertise' : 'Skills';
-        pdf.text(skillsTitle, 20, currentY);
-        currentY += 10;
-        
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        const skillsLines = pdf.splitTextToSize(skills, 170);
-        pdf.text(skillsLines, 20, currentY);
-        currentY += (skillsLines.length * 5) + 10;
-      }
-      
-      // Work Experience
-      if (experience.length > 0) {
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        const experienceTitle = selectedTemplate === 'classic' ? 'PROFESSIONAL EXPERIENCE' : 
-                               selectedTemplate === 'creative' ? '💼 Work Experience' : 'Work Experience';
-        pdf.text(experienceTitle, 20, currentY);
-        currentY += 10;
-        
-        experience.forEach(exp => {
-          if (currentY > 270) {
-            pdf.addPage();
-            currentY = 20;
-          }
-          
-          pdf.setFontSize(12);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text(exp.title, 20, currentY);
-          
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(exp.company, 20, currentY + 5);
-          pdf.text(`${exp.startDate} - ${exp.current ? 'Present' : exp.endDate}`, 150, currentY + 5);
-          
-          if (exp.location) {
-            pdf.text(`Location: ${exp.location}`, 20, currentY + 10);
-            currentY += 5;
-          }
-          
-          currentY += 15;
-          
-          if (exp.description) {
-            const descLines = pdf.splitTextToSize(exp.description, 170);
-            pdf.text(descLines, 20, currentY);
-            currentY += (descLines.length * 5) + 10;
-          }
-        });
-      }
-      
-      // Education
-      if (education.length > 0) {
-        if (currentY > 250) {
-          pdf.addPage();
-          currentY = 20;
-        }
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        const educationTitle = selectedTemplate === 'classic' ? 'EDUCATION' : 
-                              selectedTemplate === 'creative' ? '🎓 Education' : 'Education';
-        pdf.text(educationTitle, 20, currentY);
-        currentY += 10;
-        
-        education.forEach(edu => {
-          if (currentY > 270) {
-            pdf.addPage();
-            currentY = 20;
-          }
-          
-          pdf.setFontSize(12);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text(edu.title, 20, currentY);
-          
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(edu.company, 20, currentY + 5);
-          pdf.text(`${edu.startDate} - ${edu.current ? 'Present' : edu.endDate}`, 150, currentY + 5);
-          
-          if (edu.location) {
-            pdf.text(`Location: ${edu.location}`, 20, currentY + 10);
-            currentY += 5;
-          }
-          
-          currentY += 15;
-          
-          if (edu.description) {
-            const descLines = pdf.splitTextToSize(edu.description, 170);
-            pdf.text(descLines, 20, currentY);
-            currentY += (descLines.length * 5) + 10;
-          }
-        });
-      }
-      
-      // Projects
-      if (projects.length > 0) {
-        if (currentY > 250) {
-          pdf.addPage();
-          currentY = 20;
-        }
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        const projectsTitle = selectedTemplate === 'classic' ? 'PROJECTS' : 
-                             selectedTemplate === 'creative' ? '🚀 Projects' : 'Projects';
-        pdf.text(projectsTitle, 20, currentY);
-        currentY += 10;
-        
-        projects.forEach(proj => {
-          if (currentY > 270) {
-            pdf.addPage();
-            currentY = 20;
-          }
-          
-          pdf.setFontSize(12);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text(proj.title, 20, currentY);
-          
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(proj.company, 20, currentY + 5);
-          pdf.text(`${proj.startDate} - ${proj.current ? 'Present' : proj.endDate}`, 150, currentY + 5);
-          
-          if (proj.location) {
-            pdf.text(`Location: ${proj.location}`, 20, currentY + 10);
-            currentY += 5;
-          }
-          
-          if (proj.url) {
-            pdf.text(`Link: ${proj.url}`, 20, currentY + 10);
-            currentY += 5;
-          }
-          
-          if (proj.stars && proj.stars > 0) {
-            pdf.text(`Stars: ${proj.stars} | Forks: ${proj.forks}`, 20, currentY + 10);
-            currentY += 5;
-          }
-          
-          currentY += 15;
-          
-          if (proj.description) {
-            const descLines = pdf.splitTextToSize(proj.description, 170);
-            pdf.text(descLines, 20, currentY);
-            currentY += (descLines.length * 5) + 10;
-          }
-        });
-      }
-      
-      // Certifications
-      if (certifications.length > 0) {
-        if (currentY > 250) {
-          pdf.addPage();
-          currentY = 20;
-        }
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        const certificationsTitle = selectedTemplate === 'classic' ? 'CERTIFICATIONS' : 
-                                   selectedTemplate === 'creative' ? '🏆 Certifications' : 'Certifications';
-        pdf.text(certificationsTitle, 20, currentY);
-        currentY += 10;
-        
-        certifications.forEach(cert => {
-          if (currentY > 270) {
-            pdf.addPage();
-            currentY = 20;
-          }
-          
-          pdf.setFontSize(12);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text(cert.title, 20, currentY);
-          
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(cert.company, 20, currentY + 5);
-          pdf.text(`${cert.startDate} - ${cert.current ? 'Present' : cert.endDate}`, 150, currentY + 5);
-          
-          if (cert.location) {
-            pdf.text(`Location: ${cert.location}`, 20, currentY + 10);
-            currentY += 5;
-          }
-          
-          currentY += 15;
-          
-          if (cert.description) {
-            const descLines = pdf.splitTextToSize(cert.description, 170);
-            pdf.text(descLines, 20, currentY);
-            currentY += (descLines.length * 5) + 10;
-          }
-        });
-      }
-      
-      // Save the PDF
-      pdf.save(`${formData.personalInfo.fullName || 'resume'}_resume.pdf`);
-      
-      alert('PDF downloaded successfully!');
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      
-      // Fallback: Download as text file
-      try {
-        const markdownContent = generateMarkdown();
-        const blob = new Blob([markdownContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${formData.personalInfo.fullName || 'resume'}_resume.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        alert('PDF generation failed. Downloaded as text file instead.');
-      } catch (fallbackError) {
-        console.error('Fallback error:', fallbackError);
-        alert('Failed to generate PDF. Please try again.');
-      }
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const generateMarkdown = () => {
     const { personalInfo, summary, skills, experience, education, projects, certifications } = formData;
@@ -1078,6 +891,7 @@ const saveResume = async () => {
           </div>
         );
 
+
       default:
         return null;
     }
@@ -1195,39 +1009,60 @@ const saveResume = async () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900">
+      
       {/* Top bar */}
       <div className="sticky top-0 z-30 backdrop-blur-xl bg-slate-900/60 border-b border-purple-500/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+          
           <Link href="/resume-builder" className="inline-flex items-center text-purple-300 hover:text-purple-200 transition">
             <ArrowLeft className="w-4 h-4 mr-2" />
             <span className="text-sm">Back to Resume Builder</span>
           </Link>
           <div className="flex items-center gap-3">
+            <Link href="/resume-builder/saved" className="flex items-center gap-2 text-purple-300 hover:text-white">
+  <FileText className="w-5 h-5" />
+  My Saved Resumes
+</Link>
             <button
-              onClick={saveResume}
-              disabled={isSaving}
-              className="flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-full hover:bg-white/20 transition disabled:opacity-50"
-            >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {isSaving ? 'Saving...' : 'Save'}
-            </button>
-            <button
-              onClick={downloadPDF}
-              disabled={isGenerating}
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full hover:shadow-lg transition disabled:opacity-50"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  Download PDF
-                </>
-              )}
-            </button>
+  onClick={saveResume}
+  disabled={isSaving}
+  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl hover:shadow-xl hover:shadow-purple-500/30 transition disabled:opacity-70"
+>
+  {isSaving ? (
+    <>
+      <Loader2 className="w-5 h-5 animate-spin" />
+      Saving...
+    </>
+  ) : (
+    <>
+      <Save className="w-5 h-5" />
+      Save Resume
+    </>
+  )}
+</button>
+<button
+  onClick={downloadPDF}
+  disabled={isGenerating}
+  className={`flex items-center gap-2 text-white px-6 py-3 rounded-full hover:shadow-xl transition disabled:opacity-50 font-medium
+    ${selectedTemplate === 'modern' 
+      ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-blue-500/30' 
+      : selectedTemplate === 'classic' 
+      ? 'bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black shadow-gray-700/40' 
+      : 'bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 shadow-pink-500/40'
+    }`}
+>
+  {isGenerating ? (
+    <>
+      <Loader2 className="w-5 h-5 animate-spin" />
+      Generating PDF...
+    </>
+  ) : (
+    <>
+      <Download className="w-5 h-5" />
+      Download PDF
+    </>
+  )}
+</button>
           </div>
         </div>
       </div>
@@ -1265,56 +1100,76 @@ const saveResume = async () => {
             </p>
           </div>
 
-          {/* Template Selector */}
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold text-white mb-4 text-center">Choose CV Template</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-              <div 
-                className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  selectedTemplate === 'modern' 
-                    ? 'border-purple-500 bg-purple-500/20' 
-                    : 'border-white/20 hover:border-white/40 bg-white/5'
-                }`}
-                onClick={() => setSelectedTemplate('modern')}
-              >
-                <div className="text-center">
-                  <div className="w-16 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded mx-auto mb-2"></div>
-                  <h4 className="font-semibold text-white">Modern</h4>
-                  <p className="text-sm text-gray-300">Clean & Professional</p>
-                </div>
-              </div>
-              
-              <div 
-                className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  selectedTemplate === 'classic' 
-                    ? 'border-purple-500 bg-purple-500/20' 
-                    : 'border-white/20 hover:border-white/40 bg-white/5'
-                }`}
-                onClick={() => setSelectedTemplate('classic')}
-              >
-                <div className="text-center">
-                  <div className="w-16 h-20 bg-gradient-to-br from-gray-700 to-gray-900 rounded mx-auto mb-2"></div>
-                  <h4 className="font-semibold text-white">Classic</h4>
-                  <p className="text-sm text-gray-300">Traditional & Formal</p>
-                </div>
-              </div>
-              
-              <div 
-                className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  selectedTemplate === 'creative' 
-                    ? 'border-purple-500 bg-purple-500/20' 
-                    : 'border-white/20 hover:border-white/40 bg-white/5'
-                }`}
-                onClick={() => setSelectedTemplate('creative')}
-              >
-                <div className="text-center">
-                  <div className="w-16 h-20 bg-gradient-to-br from-pink-500 to-orange-500 rounded mx-auto mb-2"></div>
-                  <h4 className="font-semibold text-white">Creative</h4>
-                  <p className="text-sm text-gray-300">Colorful & Unique</p>
-                </div>
-              </div>
-            </div>
-          </div>
+  {/* Template Selector - Professional Look */}
+<div className="mb-10">
+  <h3 className="text-2xl font-bold text-white mb-6 text-center">Choose Your CV Template</h3>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+
+    {/* MODERN - Clean & Professional */}
+    <div 
+      className={`group p-8 border-4 rounded-2xl cursor-pointer transition-all duration-300 transform hover:scale-105 ${
+        selectedTemplate === 'modern' 
+          ? 'border-blue-500 bg-blue-500/10 shadow-2xl shadow-blue-500/20' 
+          : 'border-white/30 bg-white/5 hover:border-blue-400 hover:bg-blue-500/5'
+      }`}
+      onClick={() => setSelectedTemplate('modern')}
+    >
+      <div className="text-center">
+        <div className="w-20 h-28 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl mx-auto mb-4 shadow-lg"></div>
+        <h4 className="text-xl font-bold text-white mb-2">Modern</h4>
+        <p className="text-sm text-gray-300">Clean, Professional & ATS Friendly</p>
+        {selectedTemplate === 'modern' && (
+          <span className="inline-block mt-3 px-4 py-1 bg-blue-500 text-white text-xs rounded-full animate-pulse">
+            Selected
+          </span>
+        )}
+      </div>
+    </div>
+
+    {/* CLASSIC - Traditional */}
+    <div 
+      className={`group p-8 border-4 rounded-2xl cursor-pointer transition-all duration-300 transform hover:scale-105 ${
+        selectedTemplate === 'classic' 
+          ? 'border-gray-400 bg-gray-400/10 shadow-2xl shadow-gray-400/20' 
+          : 'border-white/30 bg-white/5 hover:border-gray-300 hover:bg-gray-400/5'
+      }`}
+      onClick={() => setSelectedTemplate('classic')}
+    >
+      <div className="text-center">
+        <div className="w-20 h-28 bg-gradient-to-br from-gray-800 to-black rounded-xl mx-auto mb-4 shadow-lg"></div>
+        <h4 className="text-xl font-bold text-white mb-2">Classic</h4>
+        <p className="text-sm text-gray-300">Formal & Traditional Style</p>
+        {selectedTemplate === 'classic' && (
+          <span className="inline-block mt-3 px-4 py-1 bg-gray-600 text-white text-xs rounded-full animate-pulse">
+            Selected
+          </span>
+        )}
+      </div>
+    </div>
+
+    {/* CREATIVE - Modern Creative (but white PDF) */}
+    <div 
+      className={`group p-8 border-4 rounded-2xl cursor-pointer transition-all duration-300 transform hover:scale-105 ${
+        selectedTemplate === 'creative' 
+          ? 'border-pink-500 bg-pink-500/10 shadow-2xl shadow-pink-500/20' 
+          : 'border-white/30 bg-white/5 hover:border-pink-400 hover:bg-pink-500/5'
+      }`}
+      onClick={() => setSelectedTemplate('creative')}
+    >
+      <div className="text-center">
+        <div className="w-20 h-28 bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 rounded-xl mx-auto mb-4 shadow-lg"></div>
+        <h4 className="text-xl font-bold text-white mb-2">Creative</h4>
+        <p className="text-sm text-gray-300">Colorful UI • White PDF</p>
+        {selectedTemplate === 'creative' && (
+          <span className="inline-block mt-3 px-4 py-1 bg-pink-500 text-white text-xs rounded-full animate-pulse">
+            Selected
+          </span>
+        )}
+      </div>
+    </div>
+
+  </div>
+</div>
 
           {/* Tabs */}
           <div className="flex justify-center mb-8">
@@ -1330,7 +1185,10 @@ const saveResume = async () => {
                 Form Builder
               </button>
               <button
-                onClick={() => setActiveTab('preview')}
+                 onClick={() => {
+    setIsGenerating(false);
+    setActiveTab('preview');
+  }}
                 className={`px-6 py-3 rounded-xl transition ${
                   activeTab === 'preview' 
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' 
@@ -1461,7 +1319,7 @@ const saveResume = async () => {
                         <button
                           onClick={fetchGithubProjects}
                           disabled={isFetchingGithub || !githubUsername.trim()}
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-2xl hover:shadow-lg transition disabled:opacity-50 flex items-center gap-2"
+                          className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-2xl flex items-center gap-2 hover:shadow-xl transition"
                         >
                           {isFetchingGithub ? (
                             <>
@@ -1711,37 +1569,55 @@ const saveResume = async () => {
             </div>
           )}
 
-          {activeTab === 'preview' && (
-            <div className="space-y-6">
-              {/* PDF Download Button */}
-              <div className="flex justify-center">
-                <button
-                  onClick={downloadPDF}
-                  disabled={isGenerating}
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-8 py-4 rounded-2xl hover:shadow-lg transition disabled:opacity-50 flex items-center gap-2"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Generating PDF...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="w-5 h-5" />
-                      Download PDF
-                    </>
-                  )}
-                </button>
-              </div>
+{activeTab === 'preview' && (
+  <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-4xl mx-auto">
+    {/* Clean & Single Download Button */}
+    <div className="flex justify-center mb-8">
+      <button
+        onClick={downloadPDF}
+        disabled={isGenerating}
+        className={`flex items-center gap-3 px-8 py-4 rounded-2xl text-white font-semibold hover:shadow-2xl transition disabled:opacity-50 shadow-lg
+          ${selectedTemplate === 'modern'
+            ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
+            : selectedTemplate === 'classic'
+            ? 'bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-gray-950'
+            : 'bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600'
+          }`}
+      >
+        {isGenerating ? (
+          <>
+            <Loader2 className="w-6 h-6 animate-spin" />
+            Generating PDF...
+          </>
+        ) : (
+          <>
+            <Download className="w-6 h-6" />
+            Download PDF
+          </>
+        )}
+      </button>
+    </div>
 
-              {/* Resume Preview */}
-              <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8">
-                <div id="resume-pdf-content" className="bg-white text-black rounded-2xl p-8 min-h-[800px] pdf-safe">
-                  {generateProfessionalCV()}
-                </div>
-              </div>
-            </div>
-          )}
+    {/* Only ONE Resume Preview – Clean & Perfect */}
+    
+        <div 
+  id="resume-pdf-content"
+  className="bg-white mx-auto shadow-2xl rounded-2xl overflow-hidden"
+  style={{
+    width: '210mm',           // A4 width
+    minHeight: '297mm',        // A4 height
+    padding: '18mm 15mm',      // Top 18mm, sides 15mm → කිසිම කැපීමක් නැහැ
+    boxSizing: 'border-box',
+    background: 'white',
+    margin: '20px auto',
+    fontSize: '11pt',          // Print-friendly font size
+    lineHeight: '1.5',
+  }}
+>
+  {generateProfessionalCV()}
+</div>
+  </div>
+)}
 
           {/* Entry Form Modal */}
           {showEntryForm && (
@@ -1841,6 +1717,8 @@ const saveResume = async () => {
           )}
         </div>
       </section>
+    
     </div>
+    
   );
 }

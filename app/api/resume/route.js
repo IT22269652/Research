@@ -1,49 +1,123 @@
 // app/api/resume/route.js
 import { NextResponse } from 'next/server';
-import { MongoClient } from 'mongodb';
+import connectDB from '../../../lib/mongodb.js';
+import Resume from '../../../lib/models/Resume.js';
 
-const uri = process.env.MONGODB_URI?.trim();
+export const dynamic = 'force-dynamic';
 
-let clientPromise = global._mongoClientPromise;
+export async function GET(request) {
+  try {
+    await connectDB();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
 
-if (!clientPromise && uri?.startsWith('mongodb')) {
-  const client = new MongoClient(uri);
-  clientPromise = client.connect();
-  global._mongoClientPromise = clientPromise;
+    // Single resume by ID
+    if (id) {
+      const resume = await Resume.findById(id).lean();
+      if (!resume) {
+        return NextResponse.json({ error: 'Resume not found' }, { status: 404 });
+      }
+      return NextResponse.json(resume);
+    }
+
+    // All resumes
+    const resumes = await Resume.find({}).sort({ createdAt: -1 }).lean();
+    return NextResponse.json(resumes);
+  } catch (error) {
+    console.error('GET /api/resume error:', error);
+    return NextResponse.json(
+      { error: 'Failed to load resumes', details: error.message },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request) {
   try {
-    const data = await request.json();
+    await connectDB();
+    const body = await request.json();
 
-    if (uri && uri.startsWith('mongodb')) {
-      const client = await clientPromise;
-      const db = client.db('ResumeBuilder');
-      await db.collection('resumes').insertOne({
-        ...data,
-        savedAt: new Date(),
-      });
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Saved to MongoDB Atlas!' 
-      });
-    }
-
-    // No DB → still success for user
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Saved locally only.' 
+    const resume = await Resume.create({
+      personalInfo: body.formData?.personalInfo || body.personalInfo || {},
+      summary: body.formData?.summary || body.summary || '',
+      skills: body.formData?.skills || body.skills || '',
+      experience: body.formData?.experience || body.experience || [],
+      education: body.formData?.education || body.education || [],
+      projects: body.formData?.projects || body.projects || [],
+      certifications: body.formData?.certifications || body.certifications || [],
+      selectedTemplate: body.selectedTemplate || 'modern',
     });
 
+    return NextResponse.json(resume, { status: 201 });
   } catch (error) {
-    console.error('MongoDB save error:', error.message);
-    // Never crash the app – always return success for local save
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Saved locally only.' 
-    });
+    console.error('POST /api/resume error:', error);
+    return NextResponse.json(
+      { error: 'Save failed', message: error.message },
+      { status: 500 }
+    );
   }
 }
 
-export const GET = () => NextResponse.json({ error: 'Not allowed' }, { status: 405 });
-export const dynamic = 'force-dynamic';
+export async function PUT(request) {
+  try {
+    await connectDB();
+    const body = await request.json();
+    const { id } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    }
+
+    // Support both structures: direct fields OR inside formData
+    const updateData = {
+      personalInfo: body.personalInfo || body.formData?.personalInfo || {},
+      summary: body.summary || body.formData?.summary || '',
+      skills: body.skills || body.formData?.skills || '',
+      experience: body.experience || body.formData?.experience || [],
+      education: body.education || body.formData?.education || [],
+      projects: body.projects || body.formData?.projects || [],
+      certifications: body.certifications || body.formData?.certifications || [],
+      selectedTemplate: body.selectedTemplate || body.formData?.selectedTemplate || 'modern',
+    };
+
+    const updated = await Resume.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).lean();
+
+    if (!updated) {
+      return NextResponse.json({ error: 'Resume not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error('PUT /api/resume error:', error);
+    return NextResponse.json(
+      { error: 'Update failed', message: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    await connectDB();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    }
+
+    const deleted = await Resume.findByIdAndDelete(id);
+    if (!deleted) {
+      return NextResponse.json({ error: 'Resume not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: 'Resume deleted successfully!' });
+  } catch (error) {
+    console.error('DELETE /api/resume error:', error);
+    return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
+  }
+}

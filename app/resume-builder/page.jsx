@@ -114,12 +114,17 @@ export default function ResumeBuilderMain() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link 
-                    href="/resume-builder/create"
-                    className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-blue-500/50 transition transform hover:scale-105"
-                  >
-                    <Sparkles className="w-5 h-5 inline mr-2" />
-                    Create New Resume
-                  </Link>
+  href="/resume-builder/create"
+  onClick={() => {
+    localStorage.removeItem("resumeFormData");
+    localStorage.removeItem("selectedTemplate");
+  }}
+  className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-blue-500/50 transition transform hover:scale-105"
+>
+  <Sparkles className="w-5 h-5 inline mr-2" />
+  Create New Resume
+</Link>
+
                   <Link 
                     href="/resume-builder/templates"
                     className="bg-white/10 backdrop-blur-lg text-white px-8 py-4 rounded-full text-lg font-semibold border border-white/20 hover:bg-white/20 transition"
@@ -127,6 +132,13 @@ export default function ResumeBuilderMain() {
                     <Eye className="w-5 h-5 inline mr-2" />
                     Browse Templates
                   </Link>
+                  <Link 
+          href="/resume-builder/saved"
+          className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-purple-500/50 transition transform hover:scale-105 flex items-center gap-2"
+        >
+          <Save className="w-5 h-5" />
+          My Saved Resumes
+        </Link>
                 </div>
               </div>
             )}
