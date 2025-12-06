@@ -343,7 +343,7 @@
 /* PDF-specific CV styles */
 /* Template-specific styles */
 .cv-modern {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
   color: #ffffff;
 }
 
@@ -385,7 +385,7 @@
 }
 
 .cv-creative {
-  background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 50%, #ffffff 100%);
   color: #2d3748;
 }
 
@@ -436,4 +436,8 @@
 
 .pdf-safe .cv-item-link a {
   color: #000000 !important;
+}
+
+.min-h-a4 {
+  min-height: 297mm;
 }
