@@ -194,23 +194,44 @@ const fetchGithubProjects = async () => {
   };
 
   const addEntry = () => {
-    if (!currentEntry.title?.trim() || !currentEntry.company?.trim()) {
-      toast.error('Title and Company/University required');
-      return;
+  if (!currentEntry.title?.trim() || !currentEntry.company?.trim()) {
+    toast.error('Title and Company/University required');
+    return;
+  }
+
+  setFormData(prev => {
+    const updated = { ...prev };
+
+    // EDIT MODE
+    if (currentEntry.index !== undefined) {
+      const list = [...updated[currentEntry.type]];
+      list[currentEntry.index] = { ...currentEntry };
+      updated[currentEntry.type] = list;
+    }
+    // ADD MODE
+    else {
+      updated[currentEntry.type] = [...updated[currentEntry.type], { ...currentEntry }];
     }
 
-    setFormData(prev => ({
-      ...prev,
-      [currentEntry.type]: [...(prev[currentEntry.type] || []), { ...currentEntry }]
-    }));
+    return updated;
+  });
 
-    setCurrentEntry({
-      type: currentEntry.type,
-      title: '', company: '', location: '', startDate: '', endDate: '', current: false, description: ''
-    });
-    setShowEntryForm(false);
-    toast.success('Entry added!');
-  };
+  // Reset form
+  setCurrentEntry({
+    type: currentEntry.type,
+    title: '',
+    company: '',
+    location: '',
+    startDate: '',
+    endDate: '',
+    current: false,
+    description: ''
+  });
+
+  setShowEntryForm(false);
+  toast.success(currentEntry.index !== undefined ? "Updated!" : "Added!");
+};
+
 
   const removeEntry = (section, index) => {
     setFormData(prev => ({
@@ -787,20 +808,51 @@ const generateProfessionalCV = () => {
                     ) : (
                       <div className="space-y-6">
                         {formData[section].map((item, i) => (
-                          <div key={i} className="bg-white/10 rounded-2xl p-6 border border-white/10 hover:border-purple-500/50 transition group">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h4 className="text-xl font-bold text-white">{item.title}</h4>
-                                <p className="text-purple-300 mt-1">{item.company}</p>
-                                <p className="text-sm text-gray-400 mt-1">{item.startDate} – {item.current ? 'Present' : item.endDate}</p>
-                                {item.url && <a href={item.url} target="_blank" className="text-cyan-400 hover:underline text-sm mt-2 inline-block">View Project</a>}
-                                <p className="mt-4 text-gray-300">{item.description}</p>
-                              </div>
-                              <button onClick={() => removeEntry(section, i)} className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition p-2 hover:bg-red-500/20 rounded-xl">
-                                <X className="w-6 h-6" />
-                              </button>
-                            </div>
-                          </div>
+                          <div key={i} className="bg-white/10 rounded-2xl p-6 border border-white/10 hover:border-purple-500/50 transition">
+
+  <div className="flex justify-between items-start">
+    <div>
+      <h4 className="text-xl font-bold text-white">{item.title}</h4>
+      <p className="text-purple-300 mt-1">{item.company}</p>
+      <p className="text-sm text-gray-400 mt-1">
+        {item.startDate} – {item.current ? 'Present' : item.endDate}
+      </p>
+      {item.url && (
+        <a
+          href={item.url}
+          target="_blank"
+          className="text-cyan-400 hover:underline text-sm mt-2 inline-block"
+        >
+          View Project
+        </a>
+      )}
+      <p className="mt-4 text-gray-300">{item.description}</p>
+    </div>
+
+    {/* ALWAYS VISIBLE BUTTONS */}
+    <div className="flex flex-col gap-2">
+
+      <button
+        onClick={() => {
+          setCurrentEntry({ ...item, type: section, index: i });
+          setShowEntryForm(true);
+        }}
+        className="text-blue-400 hover:text-blue-300 p-2 rounded-xl hover:bg-blue-500/20"
+      >
+        Edit
+      </button>
+
+      <button
+        onClick={() => removeEntry(section, i)}
+        className="text-red-400 hover:text-red-300 p-2 rounded-xl hover:bg-red-500/20"
+      >
+        <X className="w-6 h-6" />
+      </button>
+    </div>
+  </div>
+</div>
+
+
                         ))}
                       </div>
                     )}
@@ -890,6 +942,7 @@ const generateProfessionalCV = () => {
             <div className="bg-slate-900 rounded-3xl p-8 max-w-2xl w-full border border-white/20">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-2xl font-bold text-white">
+                  {currentEntry.index !== undefined ? "Edit " : "Add "}
                   Add {currentEntry.type.charAt(0).toUpperCase() + currentEntry.type.slice(1, -1)}
                 </h3>
                 <button onClick={() => setShowEntryForm(false)} className="text-gray-400 hover:text-white">
