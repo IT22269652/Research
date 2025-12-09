@@ -382,26 +382,39 @@ useEffect(() => {
     }));
   };
 
-  const addEntry = () => {
-    if (currentEntry.title && currentEntry.company) {
-      const newEntry = { ...currentEntry };
-      setFormData(prev => ({
-        ...prev,
-        [currentEntry.type]: [...prev[currentEntry.type], newEntry]
-      }));
-      setCurrentEntry({
-        type: currentEntry.type,
-        title: '',
-        company: '',
-        location: '',
-        startDate: '',
-        endDate: '',
-        current: false,
-        description: ''
-      });
-      setShowEntryForm(false);
-    }
-  };
+ const addEntry = () => {
+  // Edit mode: currentEntry.index is set
+  if (currentEntry.index !== undefined) {
+    setFormData(prev => {
+      const updated = [...prev[currentEntry.type]];
+      updated[currentEntry.index] = {
+        ...currentEntry,
+        index: undefined
+      };
+      return { ...prev, [currentEntry.type]: updated };
+    });
+  } else {
+    // Add new entry
+    setFormData(prev => ({
+      ...prev,
+      [currentEntry.type]: [...prev[currentEntry.type], currentEntry]
+    }));
+  }
+
+  setCurrentEntry({
+    type: currentEntry.type,
+    title: '',
+    company: '',
+    location: '',
+    startDate: '',
+    endDate: '',
+    current: false,
+    description: ''
+  });
+
+  setShowEntryForm(false);
+};
+
 
   const removeEntry = (section, index) => {
     setFormData(prev => ({
@@ -1499,10 +1512,20 @@ const saveResume = async () => {
                       Projects
                     </h3>
                     <button
-                      onClick={() => {
-                        setCurrentEntry({ ...currentEntry, type: 'projects' });
-                        setShowEntryForm(true);
-                      }}
+                     onClick={() => {
+  setCurrentEntry({
+    type: "projects",
+    title: "",
+    company: "",
+    location: "",
+    startDate: "",
+    endDate: "",
+    current: false,
+    description: "",
+    index: undefined
+  });
+  setShowEntryForm(true);
+}}
                       className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full hover:shadow-lg transition"
                     >
                       <Plus className="w-4 h-4" />
@@ -1518,12 +1541,26 @@ const saveResume = async () => {
                             <p className="text-gray-300 text-sm">{proj.company}</p>
                             <p className="text-gray-400 text-xs">{proj.startDate} - {proj.current ? 'Present' : proj.endDate}</p>
                           </div>
-                          <button
-                            onClick={() => removeEntry('projects', index)}
-                            className="text-red-400 hover:text-red-300 transition"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          
+                          <div className="flex items-center gap-3">
+  <button
+    onClick={() => {
+      setCurrentEntry({ ...proj, index, type: "projects" });
+      setShowEntryForm(true);
+    }}
+    className="text-blue-400 hover:text-blue-300 transition"
+  >
+    Edit
+  </button>
+
+  <button
+    onClick={() => removeEntry('projects', index)}
+    className="text-red-400 hover:text-red-300 transition"
+  >
+    <X className="w-4 h-4" />
+  </button>
+</div>
+
                         </div>
                       </div>
                     ))}
