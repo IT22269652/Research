@@ -1,4 +1,4 @@
-// app/resume-builder/cover-letter/saved/page.jsx
+
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import CoverLetterList from "@/components/ui/CoverLetterList";
@@ -16,10 +16,10 @@ export default async function SavedCoverLetters() {
           My Saved Cover Letters
         </h1>
 
-        {/* --- Back Button Area (Title එකට යටින්, වම් පැත්තේ) --- */}
+        {/* --- Back Button Area  --- */}
         <div className="flex justify-start mb-8">
             <Link 
-                href="/resume-builder" // මෙතනින් Main Dashboard එකට යනවා
+                href="/resume-builder" 
                 className="flex items-center gap-2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-all"
             >
                 <ArrowLeft size={20} /> 
