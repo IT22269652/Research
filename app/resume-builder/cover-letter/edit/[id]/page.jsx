@@ -27,6 +27,9 @@ export default function EditCoverLetterPage({ params }) {
         const data = await getCoverLetter(id);
         if (data) {
           setLetterData(data);
+          
+          
+
           setContentHtml(data.content);
           
           if (editorRef.current) {
@@ -171,11 +174,11 @@ export default function EditCoverLetterPage({ params }) {
   if (!letterData) return null;
 
   const handleDownloadPDF = async () => {
-    // 1. Loading state on කරන්න (ඔයාගේ code එකේ state එකේ නම වෙනස් නම් මෙතන වෙනස් කරන්න)
+    // 1. Loading state on කරන්න 
     // setIsGenerating(true); 
 
     try {
-      // *** වැදගත්: ඔයාගේ Cover Letter එක තියෙන DIV එකේ ID එක මෙතනට දෙන්න ***
+      
       const element = document.getElementById('cover-letter-content'); 
       
       if (!element) {
@@ -195,9 +198,9 @@ export default function EditCoverLetterPage({ params }) {
         width: element.scrollWidth,
         height: element.scrollHeight,
         
-        // කලින් දුන්න OKLCH color fix එක මෙතනත් පාවිච්චි කරනවා
+        
         onclone: (clonedDoc) => {
-          // මෙතනත් ID එක හරියටම දෙන්න
+          
           const clonedElement = clonedDoc.getElementById('cover-letter-content');
           if (clonedElement) {
               clonedElement.classList.add('html2canvas-container');
@@ -235,7 +238,7 @@ export default function EditCoverLetterPage({ params }) {
         heightLeft -= pdfHeight;
       }
 
-      // Cover Letter එකේ නම දාලා save කරන්න
+      
       pdf.save('Cover_Letter.pdf');
       // toast.success('Cover letter downloaded!');
 

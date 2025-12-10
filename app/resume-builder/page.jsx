@@ -148,18 +148,18 @@ export default function ResumeBuilderMain() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link 
-                    href="/resume-builder/cover-letter"
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-purple-500/50 transition transform hover:scale-105"
+                    href="/resume-builder/cover-letter/create"
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-blue-500/50 transition transform hover:scale-105"
                   >
                     <Sparkles className="w-5 h-5 inline mr-2" />
                     Generate Cover Letter
                   </Link>
                   <Link 
-                    href="/resume-builder/cover-letter/templates"
-                    className="bg-white/10 backdrop-blur-lg text-white px-8 py-4 rounded-full text-lg font-semibold border border-white/20 hover:bg-white/20 transition"
+                    href="/resume-builder/cover-letter/saved"
+          className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-purple-500/50 transition transform hover:scale-105 flex items-center gap-2"
                   >
-                    <Eye className="w-5 h-5 inline mr-2" />
-                    View Examples
+                    <Save className="w-5 h-5" />
+                    Saved Cover letters
                   </Link>
                 </div>
               </div>
