@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Download, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Loader2, ArrowLeft } from "lucide-react";
 import { getCoverLetter, saveCoverLetter } from "@/actions/cover-letter";
+import { toast } from "sonner";
 
 export default function EditCoverLetterPage({ params }) {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function EditCoverLetterPage({ params }) {
   
   const editorRef = useRef(null);
 
-  // 1. Data Load කිරීම
+  // 1. Data Load
   useEffect(() => {
     async function fetchLetter() {
       const resolvedParams = await params; 
@@ -76,39 +77,175 @@ export default function EditCoverLetterPage({ params }) {
     }
   };
 
-  // 4. Download Function (අලුතෙන් එකතු කළ කොටස)
+  // 4. ✅ FIXED DOWNLOAD FUNCTION (Solves "oklch" error)
+  const downloadPDF = async () => {
+  setIsGenerating(true);
+
+  try {
+    const element = document.getElementById('resume-pdf-content');
+    if (!element) {
+      toast.error('Preview not ready!');
+      return;
+    }
+
+    // Dynamic imports
+    const html2canvas = (await import('html2canvas-pro')).default;
+    const { jsPDF } = await import('jspdf');
+
+    // Capture settings
+    const canvas = await html2canvas(element, {
+      scale: 2, // High resolution
+      useCORS: true,
+      backgroundColor: '#ffffff', // Force white background
+      logging: false,
+      allowTaint: true,
+      width: element.scrollWidth,
+      height: element.scrollHeight,
+      
+      // *** THE FIX: Modify the cloned element specifically for the PDF ***
+      onclone: (clonedDoc) => {
+        const clonedElement = clonedDoc.getElementById('resume-pdf-content');
+        if (clonedElement) {
+            // Apply the safe-color class specifically for generation
+            clonedElement.classList.add('html2canvas-container');
+            
+            // Optional: Ensure all text is visible (force colors if needed)
+            const allElements = clonedElement.querySelectorAll('*');
+            allElements.forEach(el => {
+                const style = window.getComputedStyle(el);
+                // If opacity is causing issues, reset it
+                if (style.opacity === '0') {
+                    el.style.opacity = '1'; 
+                }
+            });
+        }
+      }
+    });
+
+    // PDF Generation (Perfect A4 Logic)
+    const imgData = canvas.toDataURL('image/png');
+    
+    // A4 dimensions in mm: 210 x 297
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();   // 210mm
+    const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+
+    // Calculate ratio to fit width exactly
+    const ratio = pdfWidth / imgWidth;
+    const scaledHeight = imgHeight * ratio;
+
+    let positionY = 0;
+    let heightLeft = scaledHeight;
+
+    // First Page
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, scaledHeight);
+    heightLeft -= pdfHeight;
+
+    // Additional Pages (if content is longer than one A4)
+    while (heightLeft > 0) {
+      positionY -= pdfHeight; // Move the image up for the next page
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, positionY, pdfWidth, scaledHeight);
+      heightLeft -= pdfHeight;
+    }
+
+    const fileName = formData?.personalInfo?.fullName 
+      ? `${formData.personalInfo.fullName.replace(/\s+/g, '_')}_Resume.pdf` 
+      : 'My_Resume_A4.pdf';
+
+    pdf.save(fileName);
+    toast.success('PDF downloaded — Perfect A4 size!');
+
+  } catch (err) {
+    console.error('PDF Generation Error:', err);
+    toast.error('Failed to generate PDF. Please try again.');
+  } finally {
+    setIsGenerating(false);
+  }
+};
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#2e0249]"><Loader2 className="animate-spin text-white"/></div>;
+  if (!letterData) return null;
+
   const handleDownloadPDF = async () => {
-    if (!editorRef.current) return;
+    // 1. Loading state on කරන්න (ඔයාගේ code එකේ state එකේ නම වෙනස් නම් මෙතන වෙනස් කරන්න)
+    // setIsGenerating(true); 
 
     try {
-      // html2pdf library එක dynamic import කරනවා
-      const html2pdf = (await import("html2pdf.js")).default;
-      const element = editorRef.current;
+      // *** වැදගත්: ඔයාගේ Cover Letter එක තියෙන DIV එකේ ID එක මෙතනට දෙන්න ***
+      const element = document.getElementById('cover-letter-content'); 
       
-      const opt = {
-        margin:       [15, 15, 15, 15], // mm
-        filename:     `${letterData.jobTitle.replace(/\s+/g, '_')}_Cover_Letter.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true }, // High Quality Print
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
+      if (!element) {
+        toast.error('Preview not ready!');
+        return;
+      }
 
-      html2pdf().set(opt).from(element).save();
+      const html2canvas = (await import('html2canvas-pro')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        allowTaint: true,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        
+        // කලින් දුන්න OKLCH color fix එක මෙතනත් පාවිච්චි කරනවා
+        onclone: (clonedDoc) => {
+          // මෙතනත් ID එක හරියටම දෙන්න
+          const clonedElement = clonedDoc.getElementById('cover-letter-content');
+          if (clonedElement) {
+              clonedElement.classList.add('html2canvas-container');
+              
+              const allElements = clonedElement.querySelectorAll('*');
+              allElements.forEach(el => {
+                  const style = window.getComputedStyle(el);
+                  if (style.opacity === '0') {
+                      el.style.opacity = '1'; 
+                  }
+              });
+          }
+        }
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = pdfWidth / imgWidth;
+      const scaledHeight = imgHeight * ratio;
+
+      let positionY = 0;
+      let heightLeft = scaledHeight;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, scaledHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        positionY -= pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, positionY, pdfWidth, scaledHeight);
+        heightLeft -= pdfHeight;
+      }
+
+      // Cover Letter එකේ නම දාලා save කරන්න
+      pdf.save('Cover_Letter.pdf');
+      // toast.success('Cover letter downloaded!');
+
     } catch (err) {
-      console.error("PDF generation failed", err);
-      alert("Failed to generate PDF. Please try again.");
+      console.error(err);
+      // toast.error('Download failed');
+    } finally {
+      // setIsGenerating(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#2e0249]">
-        <Loader2 className="w-10 h-10 text-white animate-spin" />
-      </div>
-    );
-  }
-
-  if (!letterData) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
@@ -132,7 +269,7 @@ export default function EditCoverLetterPage({ params }) {
         {/* --- Toolbar Area --- */}
         <div className="bg-[#d946ef] p-3 flex flex-col md:flex-row justify-between items-center gap-3">
             
-            {/* Left: Formatting Buttons */}
+            {/* Formatting Buttons */}
             <div className="flex gap-2 bg-white/20 p-1 rounded-lg backdrop-blur-sm">
                 <button onClick={() => formatDoc('bold')} className="p-2 text-white hover:bg-white/30 rounded transition" title="Bold"><Bold size={18} /></button>
                 <button onClick={() => formatDoc('italic')} className="p-2 text-white hover:bg-white/30 rounded transition" title="Italic"><Italic size={18} /></button>
@@ -143,10 +280,8 @@ export default function EditCoverLetterPage({ params }) {
                 <button onClick={() => formatDoc('justifyRight')} className="p-2 text-white hover:bg-white/30 rounded transition" title="Align Right"><AlignRight size={18} /></button>
             </div>
 
-            {/* Right: Action Buttons (Download & Save) */}
+            {/* Action Buttons */}
             <div className="flex gap-3">
-                
-                {/* 1. Download Button */}
                 <button
                     onClick={handleDownloadPDF}
                     className="flex items-center gap-2 bg-purple-900 hover:bg-purple-800 text-white px-4 py-2 rounded-lg font-bold shadow-md transition border border-white/20"
@@ -155,7 +290,6 @@ export default function EditCoverLetterPage({ params }) {
                     <span className="hidden sm:inline">Download PDF</span>
                 </button>
 
-                {/* 2. Save Button */}
                 <button
                     onClick={handleSave}
                     disabled={saving}
@@ -168,13 +302,18 @@ export default function EditCoverLetterPage({ params }) {
         </div>
 
         {/* --- Editable Paper Area --- */}
-        <div className="p-12 min-h-[800px] bg-white cursor-text">
+        {/* ✅ I added the class 'pdf-content-area' here so our script can find it */}
+        <div 
+            id="cover-letter-content"
+            className="p-12 min-h-[800px] cursor-text pdf-content-area" 
+            style={{ backgroundColor: '#ffffff' }}
+        >
             <div
                 ref={editorRef}
                 contentEditable
                 suppressContentEditableWarning={true}
-                className="outline-none text-gray-800 text-[16px] leading-relaxed font-serif whitespace-pre-wrap"
-                style={{ minHeight: '600px' }}
+                className="outline-none text-[16px] leading-relaxed font-serif whitespace-pre-wrap"
+                style={{ minHeight: '600px', color: '#000000' }}
                 dangerouslySetInnerHTML={{ __html: contentHtml }}
             />
         </div>
