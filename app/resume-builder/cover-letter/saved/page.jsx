@@ -1,9 +1,9 @@
 // app/resume-builder/cover-letter/saved/page.jsx
 import CoverLetterList from "@/components/ui/CoverLetterList";
-import { getCoverLetters } from "@/actions/cover-letter";
+import { getCoverLetters } from "@/actions/cover-letter"; // ← හරි import
 
 export default async function SavedCoverLetters() {
-  const { coverLetters } = await getCoverLetters();
+  const { coverLetters } = await getCoverLetters(); // ← දැන් function එක තියෙනවා!
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 p-8">
@@ -11,7 +11,7 @@ export default async function SavedCoverLetters() {
         <h1 className="text-5xl font-bold text-white text-center mb-12">
           My Saved Cover Letters
         </h1>
-        <CoverLetterList coverLetters={coverLetters} />
+        <CoverLetterList coverLetters={coverLetters || []} />
       </div>
     </div>
   );
