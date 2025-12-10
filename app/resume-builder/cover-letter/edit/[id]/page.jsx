@@ -27,6 +27,9 @@ export default function EditCoverLetterPage({ params }) {
         const data = await getCoverLetter(id);
         if (data) {
           setLetterData(data);
+          
+          
+
           setContentHtml(data.content);
           
           if (editorRef.current) {

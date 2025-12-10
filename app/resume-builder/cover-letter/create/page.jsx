@@ -46,7 +46,7 @@ export default function CoverLetterCreatePage() {
   if (!formData.personalInfo.fullName.trim()) return alert("Full Name required!");
   if (!formData.jobInfo.companyName.trim()) return alert("Company Name required!");
   if (!formData.jobInfo.jobTitle.trim()) return alert("Job Title required!");
-  if (formData.jobInfo.jobDescription.trim().length < 50) return alert("Job Description too short!");
+  if (formData.jobInfo.jobDescription.trim().length < 20) return alert("Job Description too short!");
 
   setGenerating(true);
 
