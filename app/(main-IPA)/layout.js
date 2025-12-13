@@ -1,12 +1,14 @@
 import React from 'react'
-import DashboardProv from './provider'
+import DashboardProvider from './provider'
 
 function DashboardLayout({ children }) {
   return (
     <div>
-        <DashboardProv>
+        <DashboardProvider>
+          <div className='p-10'>
              {children}
-        </DashboardProv>
+          </div>
+        </DashboardProvider>
     </div>
   )
 }

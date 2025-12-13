@@ -69,14 +69,9 @@ function Home() {
         "AI-generated voice-based interview questions tailored to your job role and experience",
       icon: Briefcase,
       color: "from-orange-500 to-red-500",
-      link: "/InterviewDashboard",
-      features: [
-        "Voice Interview",
-        "HR & Technical Q&A",
-        "Custom Questions",
-        "Mock Interviews",
-      ],
-    },
+      link: "/InterviewHome",
+      features: ["Voice Interview", "HR & Technical Q&A", "Custom Questions", "Mock Interviews"]
+    }
   ];
 
   const stats = [
