@@ -35,12 +35,25 @@ function FormContainer({onHandleInputChanges}) {
       <div className='p-10 bg-slate-800/40 backdrop-blur-sm rounded-2xl shadow-2xl max-w-4xl mx-auto border border-slate-700/50'>
         <div>
           <h2 className='text-base font-semibold mb-3 text-gray-200'>Job Position</h2>
-          <Input 
-            placeholder="e.g. Full Stack Developer" 
-            className='mt-2 h-12 bg-slate-900/50 border-slate-600/50 text-gray-100 placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20'
-            onChange={(event) => onHandleInputChanges('jobPosition', event.target.value)}
-          />
-        </div>  
+          <Select onValueChange={(value) => onHandleInputChanges('jobPosition', value)}>
+            <SelectTrigger className="w-full mt-2 h-12 bg-slate-900/50 border-slate-600/50 text-gray-100 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20">
+              <SelectValue placeholder="Select a job position" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800 border-slate-700/50 backdrop-blur-lg max-h-[300px]">
+              <SelectItem value="Data Science" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">Data Science</SelectItem>
+              <SelectItem value="Full Stack Developer" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">Full Stack Developer</SelectItem>
+              <SelectItem value="Frontend Developer" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">Frontend Developer</SelectItem>
+              <SelectItem value="Backend Developer" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">Backend Developer</SelectItem>
+              <SelectItem value="UX/UI Designer" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">UX/UI Designer</SelectItem>
+              <SelectItem value="Cyber Security" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">Cyber Security</SelectItem>
+              <SelectItem value="Networking" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">Networking</SelectItem>
+              <SelectItem value="Computer Science" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">Computer Science</SelectItem>
+              <SelectItem value="Interactive Media" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">Interactive Media</SelectItem>
+              <SelectItem value="Information System Engineering" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">Information System Engineering</SelectItem>
+              <SelectItem value="AI Engineering" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">AI Engineering</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className='mt-8'>
           <h2 className='text-base font-semibold mb-3 text-gray-200'>Job Description</h2>

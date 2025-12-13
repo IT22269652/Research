@@ -18,7 +18,7 @@ const menuItems = [
   {
     title: "Home",
     icon: Home,
-    url: "/",
+    url: "/InterviewHome",
   },
   {
     title: "Dashboard",
