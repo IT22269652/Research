@@ -31,7 +31,7 @@ function Home() {
       description: "Smart career path recommendations with personalized skill development plans",
       icon: TrendingUp,
       color: "from-green-500 to-emerald-500",
-      link: "/career-guidance",
+      link: "/career-learning-guidance/cv-section",
       features: ["Skill Gap Analysis", "Career Paths", "Course Recommendations", "Market Trends"]
     },
     {
