@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import CompanySidebar from '../../components/CompanySidebar';
+import CompanySidebar from '../../components/CompanySidebar'; // Adjust path if needed
+import { Loader2 } from 'lucide-react'; // Make sure to install lucide-react
 
 export default function AddNewJobPost() {
   const [jobTitle, setJobTitle] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [file, setFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -31,24 +33,44 @@ export default function AddNewJobPost() {
 
   const handleDragLeave = () => setDragOver(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
     const formData = new FormData();
     formData.append('title', jobTitle);
     formData.append('description', jobDescription);
     if (file) formData.append('file', file);
 
-    console.log('Form Data:', formData);
-    alert('Job post submitted! (Check console for details)');
+    try {
+      const res = await fetch('/api/jobs', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        alert('Job Posted Successfully!');
+        // Reset Form
+        setJobTitle('');
+        setJobDescription('');
+        setFile(null);
+        // Optional: Redirect to posted jobs page
+        // window.location.href = '/company/posted-jobs';
+      } else {
+        alert('Failed to post job');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('An error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex">
-      {/* Reusable Sidebar */}
       <CompanySidebar />
 
-      {/* Main Content */}
       <main className="flex-1 p-6 md:p-10 flex justify-center items-start">
         <form
           onSubmit={handleSubmit}
@@ -71,7 +93,7 @@ export default function AddNewJobPost() {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-gray-300 font-medium">Job Description (Text)</label>
+            <label className="block text-gray-300 font-medium">Job Description</label>
             <textarea
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
@@ -110,9 +132,16 @@ export default function AddNewJobPost() {
 
           <button
             type="submit"
-            className="w-full py-3 rounded-full font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-md shadow-pink-500/40 hover:shadow-lg hover:scale-105 transition-transform duration-200"
+            disabled={isSubmitting}
+            className="w-full py-3 rounded-full font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-md shadow-pink-500/40 hover:shadow-lg hover:scale-105 transition-transform duration-200 flex justify-center items-center gap-2"
           >
-            Submit Job Post
+            {isSubmitting ? (
+              <>
+                <Loader2 className="animate-spin w-5 h-5" /> Posting...
+              </>
+            ) : (
+              "Submit Job Post"
+            )}
           </button>
         </form>
       </main>
