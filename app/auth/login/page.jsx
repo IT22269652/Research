@@ -97,7 +97,7 @@ export default function Login() {
         // Redirect based on the role returned from the DATABASE (data.user.role)
         // We prioritize the database role over the UI selection for accuracy
         if (data.user.role === "company") {
-          router.push("/company/jobpost-dashboard");
+          router.push("/company/jobpost-dashbord");
         } else {
           router.push("/"); // Default page for applicants
         }
