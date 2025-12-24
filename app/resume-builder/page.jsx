@@ -183,13 +183,7 @@ export default function ResumeBuilderMain() {
                     <CheckCircle className="w-5 h-5 inline mr-2" />
                     Check My Resume
                   </Link>
-                  <Link 
-                    href="/resume-builder/checker/guide"
-                    className="bg-white/10 backdrop-blur-lg text-white px-8 py-4 rounded-full text-lg font-semibold border border-white/20 hover:bg-white/20 transition"
-                  >
-                    <Eye className="w-5 h-5 inline mr-2" />
-                    ATS Guide
-                  </Link>
+                 
                 </div>
               </div>
             )}

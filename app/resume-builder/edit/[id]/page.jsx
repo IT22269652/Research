@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Download, Sparkles, Plus, Github, X, Loader2, User } from 'lucide-react';
+import { ArrowLeft, Save, Download, Sparkles, Plus, Github, X, Loader2, User, Code } from 'lucide-react';
 import Link from 'next/link';
 import { toast, Toaster } from 'react-hot-toast';
 import html2canvas from 'html2canvas-pro';  
@@ -34,10 +34,12 @@ const [isFetchingGithub, setIsFetchingGithub] = useState(false);
     },
     summary: '',
     skills: '',
+    technicalSkills: '',
     experience: [],
     education: [],
     projects: [],
-    certifications: []
+    certifications: [],
+    references: []
   });
 
   const [currentEntry, setCurrentEntry] = useState({
@@ -84,10 +86,12 @@ useEffect(() => {
         },
         summary: data.summary || '',
         skills: data.skills || '',
+        technicalSkills: data.technicalSkills || '',
         experience: Array.isArray(data.experience) ? data.experience : [],
         education: Array.isArray(data.education) ? data.education : [],
         projects: Array.isArray(data.projects) ? data.projects : [],
-        certifications: Array.isArray(data.certifications) ? data.certifications : []
+        certifications: Array.isArray(data.certifications) ? data.certifications : [],
+        references: Array.isArray(data.references) ? data.references : []
       });
 
       setSelectedTemplate(data.selectedTemplate || 'modern');
@@ -148,7 +152,6 @@ const fetchGithubProjects = async () => {
     });
 };
 
-  // SAVE / UPDATE – same structure as DB
   const saveResume = async () => {
     if (!formData.personalInfo.fullName?.trim()) {
       toast.error('Full Name is required!');
@@ -165,10 +168,12 @@ const fetchGithubProjects = async () => {
           personalInfo: formData.personalInfo,
           summary: formData.summary,
           skills: formData.skills,
+          technicalSkills: formData.technicalSkills, // Save Technical Skills
           experience: formData.experience,
           education: formData.education,
           projects: formData.projects,
           certifications: formData.certifications,
+          references: formData.references,           // Save References
           selectedTemplate
         })
       });
@@ -419,6 +424,14 @@ const generateProfessionalCV = () => {
           </div>
         )}
 
+        {/* PREVIEW: Technical Skills */}
+          {technicalSkills && (
+            <div className="cv-section mb-12">
+              <h2 className="cv-section-title text-3xl font-bold text-blue-700 mb-6 border-b-4 border-blue-600 inline-block pb-2">TECHNICAL SKILLS</h2>
+              <p className="text-gray-700 text-lg">{technicalSkills}</p>
+            </div>
+          )}
+
         {/* Work Experience */}
         {experience.length > 0 && (
           <div className="cv-section mb-12">
@@ -482,6 +495,18 @@ const generateProfessionalCV = () => {
             ))}
           </div>
         )}
+
+        {/* PREVIEW: References */}
+          {references.length > 0 && (
+            <div className="cv-section mb-12">
+              <h2 className="cv-section-title text-3xl font-bold text-blue-700 mb-8 border-b-4 border-blue-600 inline-block pb-2">REFERENCES</h2>
+              <div className="grid grid-cols-2 gap-6">
+                {references.map((ref, i) => (
+                   <ReferenceItem key={i} refData={ref} />
+                ))}
+              </div>
+            </div>
+          )}
       </div>
     );
   }
@@ -521,6 +546,14 @@ const generateProfessionalCV = () => {
           </div>
         )}
 
+        {/* PREVIEW: Technical Skills */}
+          {technicalSkills && (
+            <div className="cv-section mb-12">
+              <h2 className="cv-section-title text-3xl font-bold text-blue-700 mb-6 border-b-4 border-blue-600 inline-block pb-2">TECHNICAL SKILLS</h2>
+              <p className="text-gray-700 text-lg">{technicalSkills}</p>
+            </div>
+          )}
+
         {experience.length > 0 && (
           <div className="cv-section mb-10">
             <h2 className="cv-section-title bg-black text-white inline-block px-8 py-3 text-2xl font-bold mb-6">
@@ -578,6 +611,18 @@ const generateProfessionalCV = () => {
             ))}
           </div>
         )}
+
+        {/* PREVIEW: References */}
+          {references.length > 0 && (
+            <div className="cv-section mb-12">
+              <h2 className="cv-section-title text-3xl font-bold text-blue-700 mb-8 border-b-4 border-blue-600 inline-block pb-2">REFERENCES</h2>
+              <div className="grid grid-cols-2 gap-6">
+                {references.map((ref, i) => (
+                   <ReferenceItem key={i} refData={ref} />
+                ))}
+              </div>
+            </div>
+          )}
       </div>
     );
   }
@@ -617,6 +662,14 @@ const generateProfessionalCV = () => {
           </div>
         )}
 
+        {/* PREVIEW: Technical Skills */}
+          {technicalSkills && (
+            <div className="cv-section mb-12">
+              <h2 className="cv-section-title text-3xl font-bold text-blue-700 mb-6 border-b-4 border-blue-600 inline-block pb-2">TECHNICAL SKILLS</h2>
+              <p className="text-gray-700 text-lg">{technicalSkills}</p>
+            </div>
+          )}
+
         {experience.length > 0 && (
           <div className="cv-section mb-10">
             <h2 className="cv-section-title bg-black text-white inline-block px-8 py-3 text-2xl font-bold mb-6">
@@ -674,6 +727,18 @@ const generateProfessionalCV = () => {
             ))}
           </div>
         )}
+
+        {/* PREVIEW: References */}
+          {references.length > 0 && (
+            <div className="cv-section mb-12">
+              <h2 className="cv-section-title text-3xl font-bold text-blue-700 mb-8 border-b-4 border-blue-600 inline-block pb-2">REFERENCES</h2>
+              <div className="grid grid-cols-2 gap-6">
+                {references.map((ref, i) => (
+                   <ReferenceItem key={i} refData={ref} />
+                ))}
+              </div>
+            </div>
+          )}
       </div>
     );
   }
@@ -769,12 +834,23 @@ const generateProfessionalCV = () => {
 
                 {/* Skills */}
                 <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
-                  <h3 className="text-2xl font-bold text-white mb-6">Technical Skills</h3>
+                  <h3 className="text-2xl font-bold text-white mb-6">Soft Skills</h3>
                   <textarea
                     value={formData.skills}
                     onChange={(e) => setFormData(prev => ({ ...prev, skills: e.target.value }))}
-                    placeholder="React, Node.js, MongoDB..."
+                    placeholder="e.g : Empathy, Design Skills..."
                     className="w-full px-6 py-5 bg-white/10 border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/60 focus:border-purple-400 transition h-40 resize-none backdrop-blur-sm"
+                  />
+                </div>
+
+                {/* 4. UI: TECHNICAL SKILLS (Added) */}
+                <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
+                  <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"> Technical Skills</h3>
+                  <textarea 
+                    value={formData.technicalSkills} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, technicalSkills: e.target.value }))} 
+                    placeholder="List specific technologies (e.g : AWS, Docker, Python)..."
+                    className="w-full px-6 py-5 bg-white/10 border border-white/20 rounded-2xl text-white h-40 resize-none" 
                   />
                 </div>
 
@@ -810,8 +886,8 @@ const generateProfessionalCV = () => {
                         {formData[section].map((item, i) => (
                           <div key={i} className="bg-white/10 rounded-2xl p-6 border border-white/10 hover:border-purple-500/50 transition">
 
-  <div className="flex justify-between items-start">
-    <div>
+                        <div className="flex justify-between items-start">
+                      <div>
       <h4 className="text-xl font-bold text-white">{item.title}</h4>
       <p className="text-purple-300 mt-1">{item.company}</p>
       <p className="text-sm text-gray-400 mt-1">
@@ -851,14 +927,21 @@ const generateProfessionalCV = () => {
     </div>
   </div>
 </div>
-
-
                         ))}
+
+
                       </div>
                     )}
                   </div>
+
+                
+
+
                 ))}
+
+                
               </div>
+              
 
 {/* AI Assistant */}
               <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">

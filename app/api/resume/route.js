@@ -11,7 +11,6 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
-    // Single resume by ID
     if (id) {
       const resume = await Resume.findById(id).lean();
       if (!resume) {
@@ -20,7 +19,6 @@ export async function GET(request) {
       return NextResponse.json(resume);
     }
 
-    // All resumes
     const resumes = await Resume.find({}).sort({ createdAt: -1 }).lean();
     return NextResponse.json(resumes);
   } catch (error) {
@@ -41,10 +39,12 @@ export async function POST(request) {
       personalInfo: body.formData?.personalInfo || body.personalInfo || {},
       summary: body.formData?.summary || body.summary || '',
       skills: body.formData?.skills || body.skills || '',
+      technicalSkills: body.formData?.technicalSkills || body.technicalSkills || '', // New Field
       experience: body.formData?.experience || body.experience || [],
       education: body.formData?.education || body.education || [],
       projects: body.formData?.projects || body.projects || [],
       certifications: body.formData?.certifications || body.certifications || [],
+      references: body.formData?.references || body.references || [], // New Field
       selectedTemplate: body.selectedTemplate || 'modern',
     });
 
@@ -68,15 +68,16 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'ID required' }, { status: 400 });
     }
 
-    // Support both structures: direct fields OR inside formData
     const updateData = {
       personalInfo: body.personalInfo || body.formData?.personalInfo || {},
       summary: body.summary || body.formData?.summary || '',
       skills: body.skills || body.formData?.skills || '',
+      technicalSkills: body.technicalSkills || body.formData?.technicalSkills || '', // New Field
       experience: body.experience || body.formData?.experience || [],
       education: body.education || body.formData?.education || [],
       projects: body.projects || body.formData?.projects || [],
       certifications: body.certifications || body.formData?.certifications || [],
+      references: body.references || body.formData?.references || [], // New Field
       selectedTemplate: body.selectedTemplate || body.formData?.selectedTemplate || 'modern',
     };
 
@@ -111,6 +112,7 @@ export async function DELETE(request) {
     }
 
     const deleted = await Resume.findByIdAndDelete(id);
+
     if (!deleted) {
       return NextResponse.json({ error: 'Resume not found' }, { status: 404 });
     }
