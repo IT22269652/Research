@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Download, Eye, Plus, X, Sparkles, Loader2, User, Mail, Phone, MapPin, Briefcase, GraduationCap, Code, Award, Github, ExternalLink, FileText } from 'lucide-react';
+import { ArrowLeft, Save, Download, Eye, Plus, X, Sparkles, Loader2, User, Mail, Phone, MapPin, Briefcase, GraduationCap, Code, Award, Github, ExternalLink, FileText, Users, Wand2 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { Toaster } from 'react-hot-toast';
@@ -15,6 +15,7 @@ export default function ResumeBuilderCreate() {
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('modern');
+  const [isAiLoading, setIsAiLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     personalInfo: {
@@ -27,11 +28,13 @@ export default function ResumeBuilderCreate() {
       website: ''
     },
     summary: '',
+    technicalSkills: [],
     skills: '',
     experience: [],
     education: [],
     projects: [],
-    certifications: []
+    certifications: [],
+    references: []
   });
 
   const [currentEntry, setCurrentEntry] = useState({
@@ -120,6 +123,11 @@ const downloadPDF = async () => {
         [field]: value
       }
     }));
+  };
+
+  // Helper to handle simple text updates
+  const handleTextChange = (field, value) => {
+     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   // Topic descriptions mapping
@@ -239,10 +247,12 @@ useEffect(() => {
     },
     summary: "",
     skills: "",
+    technicalSkills: "",
     experience: [],
     education: [],
     projects: [],
-    certifications: []
+    certifications: [],
+    references: []
   });
 
   setSelectedTemplate("modern");
@@ -432,6 +442,46 @@ useEffect(() => {
     }, 2000);
   };
 
+// app/resume-builder/create/page.jsx
+const generateAiSummary = async () => {
+  if (!formData.summary?.trim()) {
+    toast.error('Please enter keywords first!');
+    return;
+  }
+
+  setIsAiLoading(true);
+  try {
+    const res = await fetch('/api/generate-summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userInput: formData.summary,
+        skills: formData.skills,
+        jobTitle: formData.experience[0]?.title || 'Professional',
+        experience: formData.experience.map(e => e.title).join(', ')
+      }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setFormData(prev => ({ ...prev, summary: data.summary }));
+      toast.success('Summary generated!');
+    } else {
+      // Router error එකක් ආවොත් පරිශීලකයාට පණිවිඩයක් පෙන්වන්න
+      if (data.error && data.error.includes('router')) {
+        toast.error('AI is warming up. Please click again in 10 seconds.');
+      } else {
+        toast.error(data.error || 'Failed to generate');
+      }
+    }
+  } catch (error) {
+    console.error("AI Error:", error);
+  } finally {
+    setIsAiLoading(false);
+  }
+};
+
 const saveResume = async () => {
   if (!formData.personalInfo?.fullName?.trim()) {
     toast.error('Please enter your full name!');
@@ -547,8 +597,17 @@ const saveResume = async () => {
   };
 
   const generateProfessionalCV = () => {
-    const { personalInfo, summary, skills, experience, education, projects, certifications } = formData;
+    const { personalInfo, summary, skills, technicalSkills, experience, education, projects, certifications, references } = formData;
     
+    const ReferenceItem = ({ refData }) => (
+        <div className="cv-item">
+            <div className="cv-item-header">
+                <h3 className="cv-item-title">{refData.title}</h3> {/* Name */}
+                <span className="cv-item-company">{refData.company}</span> {/* Position/Company */}
+            </div>
+            <div className="cv-item-description">{refData.description}</div> {/* Contact Info */}
+        </div>
+    );
     switch(selectedTemplate) {
       case 'modern':
         return (
@@ -579,6 +638,14 @@ const saveResume = async () => {
               <div className="cv-section">
                 <h2 className="cv-section-title">Skills</h2>
                 <p className="cv-skills">{skills}</p>
+              </div>
+            )}
+
+            {/* Technical Skills - Added Here */}
+            {technicalSkills && (
+              <div className="cv-section">
+                <h2 className="cv-section-title">Technical Skills</h2>
+                <p className="cv-skills">{technicalSkills}</p>
               </div>
             )}
 
@@ -665,8 +732,20 @@ const saveResume = async () => {
                 ))}
               </div>
             )}
+
+            {/* References - Added at the end */}
+            {references.length > 0 && (
+                <div className="cv-section">
+                    <h2 className="cv-section-title">References</h2>
+                    {references.map((ref, index) => (
+                        <ReferenceItem key={index} refData={ref} />
+                    ))}
+                </div>
+            )}
+
           </div>
         );
+        
 
       case 'classic':
         return (
@@ -697,6 +776,14 @@ const saveResume = async () => {
               <div className="cv-section">
                 <h2 className="cv-section-title">TECHNICAL SKILLS</h2>
                 <p className="cv-skills">{skills}</p>
+              </div>
+            )}
+
+            {/* Technical Skills - Added Here */}
+            {technicalSkills && (
+              <div className="cv-section">
+                <h2 className="cv-section-title">Technical Skills</h2>
+                <p className="cv-skills">{technicalSkills}</p>
               </div>
             )}
 
@@ -782,6 +869,18 @@ const saveResume = async () => {
                   </div>
                 ))}
               </div>
+
+              
+            )}
+
+            {/* References - Added at the end */}
+            {references.length > 0 && (
+                <div className="cv-section">
+                    <h2 className="cv-section-title">References</h2>
+                    {references.map((ref, index) => (
+                        <ReferenceItem key={index} refData={ref} />
+                    ))}
+                </div>
             )}
           </div>
         );
@@ -815,6 +914,14 @@ const saveResume = async () => {
               <div className="cv-section">
                 <h2 className="cv-section-title">🛠️ Skills & Expertise</h2>
                 <p className="cv-skills">{skills}</p>
+              </div>
+            )}
+
+            {/* Technical Skills - Added Here */}
+            {technicalSkills && (
+              <div className="cv-section">
+                <h2 className="cv-section-title">Technical Skills</h2>
+                <p className="cv-skills">{technicalSkills}</p>
               </div>
             )}
 
@@ -900,6 +1007,16 @@ const saveResume = async () => {
                   </div>
                 ))}
               </div>
+            )}
+
+            {/* References - Added at the end */}
+            {references.length > 0 && (
+                <div className="cv-section">
+                    <h2 className="cv-section-title">References</h2>
+                    {references.map((ref, index) => (
+                        <ReferenceItem key={index} refData={ref} />
+                    ))}
+                </div>
             )}
           </div>
         );
@@ -1288,26 +1405,59 @@ const saveResume = async () => {
                   </div>
                 </div>
 
-                {/* Summary */}
+                {/* Professional Summary - Updated with AI Button */}
                 <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
-                  <h3 className="text-xl font-semibold text-white mb-4">Professional Summary</h3>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-2xl font-bold text-white">Professional Summary</h3>
+                    
+                    {/* AI Generate Button */}
+                    <button
+  onClick={generateAiSummary}
+  disabled={isAiLoading}
+  className="flex items-center gap-2 text-sm bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-2 rounded-xl hover:shadow-lg hover:from-indigo-600 hover:to-purple-600 transition disabled:opacity-50"
+>
+  {isAiLoading ? (
+    <>
+      <Loader2 className="w-4 h-4 animate-spin" /> Writing...
+    </>
+  ) : (
+    <>
+      <Wand2 className="w-4 h-4" /> Auto-Write with AI
+    </>
+  )}
+</button>
+                  </div>
+                  
                   <textarea
                     value={formData.summary}
                     onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
-                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60 h-32 resize-none"
-                    placeholder="Write a compelling professional summary..."
+                    placeholder="Write a compelling summary or use the AI button to generate one based on your skills and experience..."
+                    className="w-full px-6 py-5 bg-white/10 border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/60 focus:border-purple-400 transition h-48 resize-none backdrop-blur-sm"
                   />
+                  <p className="text-xs text-gray-400 mt-2 text-right">
+                    {formData.summary.split(/\s+/).filter(word => word.length > 0).length} words
+                  </p>
                 </div>
 
-                {/* Skills */}
+                {/* Soft Skills - CORRECTED */}
+                <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
+                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <Code className="w-5 h-5" /> Soft Skills
+                  </h3>
+                  <textarea
+                    value={formData.skills}
+                    onChange={(e) => setFormData(prev => ({ ...prev, skills: e.target.value }))}
+                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white h-32"
+                    placeholder="List your key skills..."
+                  />
+                </div>
+
+                {/* Technical Skills - NEW SECTION */}
                 <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
-                  <h3 className="text-xl font-semibold text-white mb-4">Skills</h3>
-                  <textarea
-                    value={formData.skills}
-                    onChange={(e) => setFormData(prev => ({ ...prev, skills: e.target.value }))}
-                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60 h-32 resize-none"
-                    placeholder="List your key skills..."
-                  />
+                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <Code className="w-5 h-5" /> Technical Skills
+                  </h3>
+                  <textarea value={formData.technicalSkills} onChange={(e) => handleTextChange('technicalSkills', e.target.value)} className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white h-32" placeholder="List your technical skills (Languages, Frameworks, Tools)..." />
                 </div>
 
                 {/* GitHub Integration */}
@@ -1566,6 +1716,58 @@ const saveResume = async () => {
                     ))}
                   </div>
                 </div>
+                {/* References - NEW SECTION */}
+                {/* --- UPDATED REFERENCES SECTION WITH EDIT BUTTON --- */}
+                <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                      <Users className="w-5 h-5" /> References
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setCurrentEntry({
+                          type: 'references',
+                          title: '',
+                          company: '',
+                          location: '',
+                          description: '',
+                          current: false
+                        });
+                        setShowEntryForm(true);
+                      }}
+                      className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full hover:shadow-lg transition"
+                    >
+                      <Plus className="w-4 h-4" /> Add Reference
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {formData.references.map((ref, index) => (
+                      <div key={index} className="bg-slate-900/60 border border-white/10 rounded-2xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-white font-semibold">{ref.title}</h4>
+                            <p className="text-gray-300 text-sm">{ref.company}</p>
+                            <p className="text-gray-400 text-xs">{ref.description}</p>
+                          </div>
+                          <div className="flex gap-2"> {/* Added Wrapper for Edit/Delete Buttons */}
+                            <button
+                                onClick={() => {
+                                  setCurrentEntry({ ...ref, index, type: 'references' }); // Load Data for Editing
+                                  setShowEntryForm(true);
+                                }}
+                                className="text-blue-400 hover:text-blue-300 transition"
+                            >
+                                Edit
+                            </button>
+                            <button onClick={() => removeEntry('references', index)} className="text-red-400 hover:text-red-300 transition">
+                                <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* AI Assistant */}
@@ -1661,7 +1863,47 @@ const saveResume = async () => {
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-slate-900 border border-white/10 rounded-3xl p-6 w-full max-w-2xl">
                 <h3 className="text-xl font-semibold text-white mb-4">Add {currentEntry.type}</h3>
+                <h3 className="text-xl font-semibold text-white mb-4">
+                    {currentEntry.type === 'references' ? 'Add Reference' : `Add ${currentEntry.type}`}
+                </h3>
                 <div className="space-y-4">
+                {/* Dynamic Fields based on Type */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">{currentEntry.type === 'references' ? 'Full Name' : 'Title'}</label>
+                      <input type="text" value={currentEntry.title} onChange={(e) => setCurrentEntry(prev => ({ ...prev, title: e.target.value }))} className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white" placeholder={currentEntry.type === 'references' ? "e.g. Dr. John Smith" : "Job Title"} />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">{currentEntry.type === 'references' ? 'Position & Company' : 'Company'}</label>
+                      <input type="text" value={currentEntry.company} onChange={(e) => setCurrentEntry(prev => ({ ...prev, company: e.target.value }))} className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white" placeholder={currentEntry.type === 'references' ? "Senior Manager at ABC Corp" : "Company Name"} />
+                    </div>
+                  </div>
+
+                  {currentEntry.type !== 'references' && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm text-gray-300 mb-2">Start Date</label>
+                          <input type="month" value={currentEntry.startDate} onChange={(e) => setCurrentEntry(prev => ({ ...prev, startDate: e.target.value }))} className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white" />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-300 mb-2">End Date</label>
+                          <input type="month" value={currentEntry.endDate} onChange={(e) => setCurrentEntry(prev => ({ ...prev, endDate: e.target.value }))} disabled={currentEntry.current} className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white disabled:opacity-50" />
+                        </div>
+                      </div>
+                  )}
+
+                  {currentEntry.type !== 'references' && (
+                    <div className="flex items-center gap-2">
+                        <input type="checkbox" id="current" checked={currentEntry.current} onChange={(e) => setCurrentEntry(prev => ({ ...prev, current: e.target.checked }))} className="rounded" />
+                        <label htmlFor="current" className="text-sm text-gray-300">Currently working here</label>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm text-gray-300 mb-2">{currentEntry.type === 'references' ? 'Contact Information' : 'Description'}</label>
+                    <textarea value={currentEntry.description} onChange={(e) => setCurrentEntry(prev => ({ ...prev, description: e.target.value }))} className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white h-32" placeholder={currentEntry.type === 'references' ? "Phone: +123... | Email: example@mail.com" : "Describe your role..."} />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm text-gray-300 mb-2">Title</label>
