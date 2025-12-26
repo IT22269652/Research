@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import PDFParser from "pdf2json"; 
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY_ATS);
 
 // --- SMART MODEL SELECTOR ---
 // Updated for December 2025: Use current Gemini 2.5+ models
