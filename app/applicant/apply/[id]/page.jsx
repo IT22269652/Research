@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   Building2, MapPin, Briefcase, DollarSign, Clock, 
-  Calendar, UploadCloud, FileText, CheckCircle2, ArrowLeft, Loader2 
+  Calendar, UploadCloud, FileText, CheckCircle2, ArrowLeft, Loader2, AlertCircle
 } from 'lucide-react';
 
 export default function ApplyForJob() {
@@ -14,6 +14,9 @@ export default function ApplyForJob() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // --- NEW: State to store ML Analysis Result ---
+  const [analysisResult, setAnalysisResult] = useState(null);
+
   // Form State
   const [applicantName, setApplicantName] = useState('');
   const [applicantEmail, setApplicantEmail] = useState('');
@@ -46,7 +49,7 @@ export default function ApplyForJob() {
     }
   };
 
-  // 3. Submit Application
+  // 3. Submit Application & Trigger ML Model
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!cvFile) return alert("Please upload your CV");
@@ -59,6 +62,9 @@ export default function ApplyForJob() {
     formData.append("applicantName", applicantName);
     formData.append("applicantEmail", applicantEmail);
     formData.append("cv", cvFile);
+    
+    // --- IMPORTANT: Send required skills for the Python Model to compare ---
+    formData.append("requiredSkills", job.requiredSkills || ""); 
 
     try {
       const res = await fetch('/api/applications', {
@@ -66,9 +72,11 @@ export default function ApplyForJob() {
         body: formData
       });
       
+      const data = await res.json();
+
       if (res.ok) {
-        alert("Application Submitted Successfully!");
-        router.push('/applicant/jobs'); // Go back to job board
+        // Instead of redirecting, show the analysis result
+        setAnalysisResult(data.missingSkills || []); 
       } else {
         alert("Failed to submit application.");
       }
@@ -80,18 +88,76 @@ export default function ApplyForJob() {
     }
   };
 
+  // --- 4. Render Loading State ---
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center text-white">
       <Loader2 className="w-10 h-10 animate-spin text-purple-400" />
     </div>
   );
 
+  // --- 5. Render Error State ---
   if (!job) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center text-white">
       Job not found
     </div>
   );
 
+  // --- 6. Render ML Analysis Result (Report Card) ---
+  if (analysisResult !== null) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-6 text-white">
+        <div className="bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl max-w-lg w-full border border-white/10 shadow-2xl animate-in zoom-in-95 duration-300">
+          
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30">
+              <CheckCircle2 className="w-10 h-10 text-green-400" />
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-2">Application Sent!</h2>
+            <p className="text-gray-300">Your CV has been successfully submitted to {job.companyName}.</p>
+          </div>
+
+          <div className="bg-slate-900/60 p-6 rounded-2xl border border-white/10 mb-8">
+            <h3 className="font-semibold mb-4 flex items-center gap-2 text-lg">
+              <span className="text-purple-400">AI Skill Analysis</span>
+            </h3>
+            
+            {analysisResult.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-green-400 font-medium text-lg">Perfect Match!</p>
+                <p className="text-sm text-gray-400">Your CV contains all the required skills mentioned in the job description.</p>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-start gap-2 mb-3 text-amber-300 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm">
+                    Our AI noticed your CV might be missing the following keywords. Consider adding them if you have these skills!
+                  </p>
+                </div>
+                
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {analysisResult.map((skill, i) => (
+                    <span key={i} className="px-3 py-1.5 bg-red-500/10 text-red-300 border border-red-500/20 rounded-lg text-sm font-medium">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button 
+            onClick={() => router.push('/applicant/jobs')}
+            className="w-full py-4 rounded-xl font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg hover:shadow-purple-500/30 hover:scale-[1.02] transition-all"
+          >
+            Back to Job Board
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- 7. Render Main Application Form ---
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-6 md:p-10">
       <div className="max-w-6xl mx-auto">
@@ -202,7 +268,7 @@ export default function ApplyForJob() {
                   className="w-full py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg hover:shadow-purple-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-4"
                 >
                   {isSubmitting ? (
-                    <><Loader2 className="animate-spin w-5 h-5" /> Submitting...</>
+                    <><Loader2 className="animate-spin w-5 h-5" /> Analyzing CV...</>
                   ) : (
                     <>Submit Application <CheckCircle2 className="w-5 h-5" /></>
                   )}

@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
-import connectDB from "@/lib/mongodb";
+import connectDB from "@/lib/mongodb.js"; // Ensure this matches your file name (db.js or mongodb.js)
 import Job from "@/models/Job";
+
+// --- FIX: Disable Caching ---
+// This ensures that when you add a new job, the list updates immediately
+export const dynamic = 'force-dynamic';
 
 // --- GET: Fetch all jobs ---
 export async function GET() {
   try {
     await connectDB();
+    
+    // Sort by createdAt: -1 (Newest first)
     const jobs = await Job.find({}).sort({ createdAt: -1 });
+    
     return NextResponse.json({ success: true, data: jobs });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -36,7 +43,7 @@ export async function POST(request) {
 
     const file = data.get("file");
     
-    // File Processing
+    // File Processing (Convert to Base64)
     if (file && typeof file !== "string") {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
