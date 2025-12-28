@@ -1,6 +1,5 @@
 
-import { SidebarProvider, SidebarTrigger } from '@/app/components/ui/sidebar'
-import { SidebarProvider } from '@/components/ui/sidebar'
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import React from 'react'
 import { AppSidebar } from './_components/AppSidebar'
 import WelcomeContainer from './InterviewDashboard/_components/WelcomeContainer'
