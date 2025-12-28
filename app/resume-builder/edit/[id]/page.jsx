@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Download, Sparkles, Plus, Github, X, Loader2, User, Code } from 'lucide-react';
 import Link from 'next/link';
@@ -21,6 +21,57 @@ export default function ResumeBuilderEdit() {
   const [showGithubImport, setShowGithubImport] = useState(false);
 const [githubUsername, setGithubUsername] = useState('');
 const [isFetchingGithub, setIsFetchingGithub] = useState(false);
+
+// Inline preview editing & upload
+const [isInlineEdit, setIsInlineEdit] = useState(false);
+const fileInputRef = useRef(null);
+const photoInputRef = useRef(null);
+const [uploadedFileName, setUploadedFileName] = useState('');
+
+// Handle photo upload from Preview toolbar
+const MAX_PHOTO_SIZE = 2 * 1024 * 1024; // 2 MB
+const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+const validateImageFile = (file) => {
+  if (!file) return { ok: false, reason: 'No file' };
+  if (!ALLOWED_PHOTO_TYPES.includes(file.type)) return { ok: false, reason: 'TYPE' };
+  if (file.size > MAX_PHOTO_SIZE) return { ok: false, reason: 'SIZE' };
+  return { ok: true };
+};
+
+const handlePreviewPhotoUpload = (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const validation = validateImageFile(file);
+  if (!validation.ok) {
+    if (validation.reason === 'TYPE') {
+      toast.error('Invalid image type. Please upload JPG, PNG, or WebP.');
+    } else if (validation.reason === 'SIZE') {
+      toast.error('Image is too large. Max size is 2 MB.');
+    }
+    // reset input
+    e.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const dataUrl = ev.target.result;
+    setFormData(prev => ({
+      ...prev,
+      personalInfo: { ...prev.personalInfo, photo: dataUrl }
+    }));
+    toast.success('Profile photo updated');
+  };
+  reader.onerror = (err) => {
+    console.error('Preview photo read error', err);
+    toast.error('Failed to read image file');
+  };
+  reader.readAsDataURL(file);
+  // reset input
+  e.target.value = '';
+};
 
   const [formData, setFormData] = useState({
     personalInfo: {
@@ -55,8 +106,76 @@ const [isFetchingGithub, setIsFetchingGithub] = useState(false);
 
   const [showEntryForm, setShowEntryForm] = useState(false);
 
+  // Allow clicking any project title in the preview to open an edit dialog
+  useEffect(() => {
+    const el = document.getElementById('resume-pdf-content');
+    if (!el) return;
+
+    const handler = (e) => {
+      const h3 = e.target.closest && e.target.closest('h3');
+      if (!h3) return;
+      const title = h3.textContent?.trim();
+      if (!title) return;
+
+      const index = formData.projects.findIndex(p => (p.title || '').trim() === title);
+      if (index !== -1) {
+        setCurrentEntry({ ...formData.projects[index], type: 'projects', index });
+        setShowEntryForm(true);
+      }
+    };
+
+    el.addEventListener('click', handler);
+    return () => el.removeEventListener('click', handler);
+  }, [formData.projects]);
+
 useEffect(() => {
   if (!id) return;
+
+  // If we just saved a resume on the Create page, there may be a short-lived cached object in sessionStorage
+  try {
+    const cached = sessionStorage.getItem('recentlySavedResume');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && parsed._id === id) {
+        // Use the recently-saved object immediately so the photo (and other data) appear while we fetch the authoritative record
+        setFormData({
+          personalInfo: {
+            fullName: parsed.personalInfo?.fullName || '',
+            email: parsed.personalInfo?.email || '',
+            phone: parsed.personalInfo?.phone || '',
+            address: parsed.personalInfo?.address || '',
+            linkedin: parsed.personalInfo?.linkedin || '',
+            github: parsed.personalInfo?.github || '',
+            website: parsed.personalInfo?.website || '',
+            photo: parsed.personalInfo?.photo || ''
+          },
+          summary: parsed.summary || '',
+          skills: parsed.skills || '',
+          technicalSkills: parsed.technicalSkills || '',
+          experience: Array.isArray(parsed.experience) ? parsed.experience : [],
+          education: Array.isArray(parsed.education) ? parsed.education : [],
+          projects: Array.isArray(parsed.projects) ? parsed.projects : [],
+          certifications: Array.isArray(parsed.certifications) ? parsed.certifications : [],
+          references: Array.isArray(parsed.references) ? parsed.references : [],
+          selectedTemplate: parsed.selectedTemplate || 'modern'
+        });
+
+        // Debug/UX: inform the user whether the cached resume includes a photo
+        try {
+          if (parsed.personalInfo?.photo) {
+            toast.success('Loaded recently-saved resume (photo present)');
+          } else {
+            toast('Loaded recently-saved resume (no photo)');
+          }
+        } catch (tErr) { /* ignore toast errors */ }
+
+        // remove short-lived cache
+        try { sessionStorage.removeItem('recentlySavedResume'); } catch (e) { /* ignore */ }
+      }
+    }
+  } catch (err) {
+    /* ignore parse errors */
+  }
 
   const loadResume = async () => {
     try {
@@ -74,6 +193,14 @@ useEffect(() => {
       const data = await res.json();
       console.log('Loaded data:', data); // ← මේක දාලා බලන්න console එකේ
 
+      try {
+        if (data.personalInfo?.photo) {
+          toast.success('Server returned resume with photo');
+        } else {
+          toast('Server returned resume without photo');
+        }
+      } catch (tErr) { /* ignore toast errors */ }
+
       setFormData({
         personalInfo: {
           fullName: data.personalInfo?.fullName || '',
@@ -82,7 +209,8 @@ useEffect(() => {
           address: data.personalInfo?.address || '',
           linkedin: data.personalInfo?.linkedin || '',
           github: data.personalInfo?.github || '',
-          website: data.personalInfo?.website || ''
+          website: data.personalInfo?.website || '',
+          photo: data.personalInfo?.photo || ''
         },
         summary: data.summary || '',
         skills: data.skills || '',
@@ -150,6 +278,42 @@ const fetchGithubProjects = async () => {
     .finally(() => {
       setIsFetchingGithub(false);
     });
+};
+
+// Upload resume JSON and autofill form
+const handleUploadResume = (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  setUploadedFileName(file.name);
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const json = JSON.parse(ev.target.result);
+      // Merge and sanitize fields
+      setFormData(prev => ({
+        ...prev,
+        personalInfo: { ...prev.personalInfo, ...(json.personalInfo || {}) },
+        summary: json.summary || prev.summary,
+        skills: json.skills || prev.skills,
+        technicalSkills: json.technicalSkills || prev.technicalSkills,
+        experience: Array.isArray(json.experience) ? json.experience : prev.experience,
+        education: Array.isArray(json.education) ? json.education : prev.education,
+        projects: Array.isArray(json.projects) ? json.projects : prev.projects,
+        certifications: Array.isArray(json.certifications) ? json.certifications : prev.certifications,
+        references: Array.isArray(json.references) ? json.references : prev.references
+      }));
+
+      toast.success('Resume data imported and autofilled!');
+    } catch (err) {
+      console.error('Upload parse error:', err);
+      toast.error('Failed to parse JSON file. Please upload a valid resume JSON.');
+    } finally {
+      // reset file input
+      e.target.value = '';
+    }
+  };
+  reader.readAsText(file);
 };
 
   const saveResume = async () => {
@@ -285,142 +449,242 @@ const fetchGithubProjects = async () => {
       return;
     }
 
-    import('html2canvas-pro').then(async (html2canvas) => {
-      try {
-        const canvas = await html2canvas.default(element, {
+    const { jsPDF } = await import('jspdf');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const margin = 15; // mm
+
+    const mmToPx = (mm) => mm * 3.779527559;
+    const pdfWidthMm = pdf.internal.pageSize.getWidth();
+    const availableWidthMm = pdfWidthMm - 2 * margin;
+    const targetWidthPx = Math.round(mmToPx(availableWidthMm));
+
+    // Try text-based rendering using jsPDF.html (selectable text)
+    try {
+      await pdf.html(element, {
+        x: margin,
+        y: margin,
+        windowWidth: targetWidthPx,
+        html2canvas: {
           scale: 2,
           useCORS: true,
           backgroundColor: '#ffffff',
           logging: false,
           allowTaint: true,
-          width: element.scrollWidth,
-          height: element.scrollHeight,
+          width: targetWidthPx,
+          onclone: (clonedDoc) => {
+            const clonedElement = clonedDoc.getElementById('resume-pdf-content');
+            if (clonedElement) {
+              clonedElement.style.width = `${targetWidthPx}px`;
+              clonedElement.style.boxSizing = 'border-box';
+              clonedElement.classList.add('html2canvas-container');
+            }
+          }
+        },
+        callback: (doc) => {
+          const filename = `${formData.personalInfo.fullName || 'Resume'}_A4_Text.pdf`;
+          doc.save(filename);
+          toast.success('Text-based PDF downloaded — selectable & print-ready!');
+        },
+        autoPaging: 'text'
+      });
+
+      setIsGenerating(false);
+      return;
+
+    } catch (err) {
+      console.warn('Text-based PDF failed, falling back to image render:', err);
+
+      try {
+        const html2canvas = (await import('html2canvas-pro')).default;
+
+        const cloned = element.cloneNode(true);
+        cloned.style.width = `${targetWidthPx}px`;
+        cloned.style.boxSizing = 'border-box';
+        cloned.classList.add('html2canvas-container');
+
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.top = '-9999px';
+        wrapper.style.left = '-9999px';
+        wrapper.appendChild(cloned);
+        document.body.appendChild(wrapper);
+
+        const canvas = await html2canvas(cloned, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          allowTaint: true,
+          width: targetWidthPx
         });
 
+        document.body.removeChild(wrapper);
+
         const imgData = canvas.toDataURL('image/png');
-        const { jsPDF } = await import('jspdf');
-        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();    // mm
+        const pdfHeight = pdf.internal.pageSize.getHeight();   // mm
 
-        const pdfWidth = pdf.internal.pageSize.getWidth();    // 210mm
-        const pdfHeight = pdf.internal.pageSize.getHeight();   // 297mm
+        const pxToMm = (px) => px / 3.779527559;
+        const imgWidthMm = pxToMm(canvas.width);
+        const imgHeightMm = pxToMm(canvas.height);
 
-        const imgWidth = canvas.width / 2;
-        const imgHeight = canvas.height / 2;
+        const availableWidthMm2 = pdfWidth - 2 * margin;
+        const availableHeightMm = pdfHeight - 2 * margin;
 
-      
-        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-        const finalWidth = imgWidth * ratio;
-        const finalHeight = imgHeight * ratio;
+        const scale = Math.min(availableWidthMm2 / imgWidthMm, 1);
+        const finalWidthMm = imgWidthMm * scale;
+        const finalHeightMm = imgHeightMm * scale;
 
-        
-        const margin = 15;
-        const x = margin;
-        const y = margin;
-        const availableWidth = pdfWidth - (2 * margin);
-        const availableHeight = pdfHeight - (2 * margin);
+        if (finalHeightMm <= availableHeightMm) {
+          pdf.addImage(imgData, 'PNG', margin, margin, finalWidthMm, finalHeightMm);
+        } else {
+          let positionYmm = 0;
+          let pageCount = 0;
+          while (positionYmm < finalHeightMm) {
+            if (pageCount > 0) pdf.addPage();
 
-        const scaledWidth = imgWidth * (availableWidth / imgWidth);
-        const scaledHeight = imgHeight * (availableHeight / imgHeight);
-        const finalRatio = Math.min(scaledWidth / imgWidth, scaledHeight / imgHeight);
+            pdf.addImage(
+              imgData,
+              'PNG',
+              margin,
+              margin - (positionYmm),
+              finalWidthMm,
+              finalHeightMm
+            );
 
-        const width = imgWidth * finalRatio;
-        const height = imgHeight * finalRatio;
-
-        
-        let positionY = 0;
-        let pageCount = 0;
-
-        while (positionY < imgHeight) {
-          if (pageCount > 0) pdf.addPage();
-
-          pdf.addImage(
-            imgData,
-            'PNG',
-            x,
-            y - (positionY * finalRatio),
-            width,
-            height
-          );
-
-          positionY += availableHeight / finalRatio;
-          pageCount++;
+            positionYmm += availableHeightMm;
+            pageCount++;
+          }
         }
 
         pdf.save(`${formData.personalInfo.fullName || 'Resume'}_A4_Print_Ready.pdf`);
-        toast.success('PDF downloaded — Perfect for printing!');
+        toast.success('PDF downloaded — image fallback used.');
 
-      } catch (err) {
-        console.error(err);
+      } catch (err2) {
+        console.error('Fallback PDF failed', err2);
         toast.error('PDF generation failed');
       }
-    });
+    }
+
   } catch (err) {
-    toast.error('Failed to load PDF generator');
+    console.error('PDF generation error:', err);
+    toast.error('Failed to generate PDF');
   } finally {
     setIsGenerating(false);
   }
 };
 
 const generateProfessionalCV = () => {
-  const { personalInfo, summary, skills, experience, education, projects } = formData;
+  const { personalInfo, summary, skills, technicalSkills, experience, education, projects, references } = formData;
+
+  // Helper to render projects list with inline Edit button
+  const renderProjectsList = (itemClass = 'mb-8 pl-8 border-l-4 border-black') => {
+    return projects.map((proj, i) => (
+      <div key={i} className={`${itemClass} relative`}>
+        <div className="absolute right-0 top-0">
+          <button onClick={() => { setCurrentEntry({ ...proj, type: 'projects', index: i }); setShowEntryForm(true); }} className="text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Edit</button>
+        </div>
+
+        <h3 onClick={() => { setCurrentEntry({ ...proj, type: 'projects', index: i }); setShowEntryForm(true); }} className="text-xl font-bold text-gray-900 cursor-pointer" title="Edit project">{proj.title}</h3>
+        {proj.url && (
+          <a href={proj.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline block mt-2">View Project</a>
+        )}
+        <p className="text-sm italic text-gray-600 mt-1">{proj.startDate} – {proj.current ? 'Present' : proj.endDate || 'Present'}</p>
+        <p className="mt-3 text-gray-700">{proj.description || 'No description available'}</p>
+      </div>
+    ));
+  };
 
   // ============= MODERN TEMPLATE - Create page එකේ 100% SAME =============
   if (selectedTemplate === 'modern') {
     return (
       <div className="cv-template cv-modern bg-white" style={{ padding: '20mm', fontFamily: 'Arial, sans-serif' }}>
         {/* Header */}
-        <div className="cv-header text-center mb-12 pb-8 border-b-4 border-blue-600">
-          <h1 className="cv-name text-5xl font-bold text-gray-900 mb-8">
-            {personalInfo.fullName || 'Your Name'}
-          </h1>
-          <div className="cv-contact flex flex-wrap justify-center gap-x-10 gap-y-3 text-lg text-gray-700">
-            {personalInfo.email && <span>Email: {personalInfo.email}</span>}
-            {personalInfo.phone && <span>Phone: {personalInfo.phone}</span>}
-            {personalInfo.address && <span>Location: {personalInfo.address}</span>}
-            {personalInfo.linkedin && (
-  <a 
-    href={personalInfo.linkedin.startsWith('http') ? personalInfo.linkedin : `https://${personalInfo.linkedin}`}
-    target="_blank" 
-    rel="noopener noreferrer"
-    className="text-blue-600 hover:underline font-medium"
-  >
-    LinkedIn: {personalInfo.linkedin.replace(/^https?:\/\//, '').replace(/\/+$/, '')}
-  </a>
-)}
+        <div className="cv-header text-center mb-12 pb-8 border-b-4">
+          {isInlineEdit ? (
+  <div className="text-center mb-8">
+    {personalInfo.photo && (
+      <div className="mx-auto mb-4 w-40 h-40 overflow-hidden border-4 ">
+        <img src={personalInfo.photo} alt="Profile" className="w-full h-full object-cover" />
+      </div>
+    )}
+    <input value={personalInfo.fullName} onChange={(e) => handlePersonalInfoChange('fullName', e.target.value)} className="w-full text-center text-4xl font-bold text-gray-900 mb-4 px-2 py-2 border rounded" />
+    <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-lg">
+      <input value={personalInfo.email} onChange={(e) => handlePersonalInfoChange('email', e.target.value)} className="px-3 py-1 border rounded text-sm" placeholder="email@example.com" />
+      <input value={personalInfo.phone} onChange={(e) => handlePersonalInfoChange('phone', e.target.value)} className="px-3 py-1 border rounded text-sm" placeholder="Phone" />
+      <input value={personalInfo.address} onChange={(e) => handlePersonalInfoChange('address', e.target.value)} className="px-3 py-1 border rounded text-sm" placeholder="Location" />
+      <input value={personalInfo.linkedin} onChange={(e) => handlePersonalInfoChange('linkedin', e.target.value)} className="px-3 py-1 border rounded text-sm" placeholder="LinkedIn URL" />
+      <input value={personalInfo.github} onChange={(e) => handlePersonalInfoChange('github', e.target.value)} className="px-3 py-1 border rounded text-sm" placeholder="GitHub URL" />
+    </div>
+  </div>
+) : (
+  <>
+    {personalInfo.photo && (
+      <div className="mx-auto mb-4 w-40 h-40 overflow-hidden border-4 ">
+        <img src={personalInfo.photo} alt="Profile" className="w-full h-full object-cover" />
+      </div>
+    )}
+    <h1 className="cv-name text-5xl font-bold text-gray-900 mb-8">
+      {personalInfo.fullName || 'Your Name'}
+    </h1>
+    <div className="cv-contact flex flex-wrap justify-center gap-x-10 gap-y-3 text-lg text-gray-700">
+      {personalInfo.email && <span>Email: {personalInfo.email}</span>}
+      {personalInfo.phone && <span>Phone: {personalInfo.phone}</span>}
+      {personalInfo.address && <span>Location: {personalInfo.address}</span>}
+      {personalInfo.linkedin && (
+        <a 
+          href={personalInfo.linkedin.startsWith('http') ? personalInfo.linkedin : `https://${personalInfo.linkedin}`}
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline font-medium"
+        >
+          LinkedIn: {personalInfo.linkedin.replace(/^https?:\/\//, '').replace(/\/+$/, '')}
+        </a>
+      )}
 
-{personalInfo.github && (
-  <a 
-    href={personalInfo.github.startsWith('http') ? personalInfo.github : `https://${personalInfo.github}`}
-    target="_blank" 
-    rel="noopener noreferrer"
-    className="text-gray-800 hover:underline font-medium"
-  >
-    GitHub: {personalInfo.github.replace(/^https?:\/\//, '').replace(/\/+$/, '')}
-  </a>
+      {personalInfo.github && (
+        <a 
+          href={personalInfo.github.startsWith('http') ? personalInfo.github : `https://${personalInfo.github}`}
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-gray-800 hover:underline font-medium"
+        >
+          GitHub: {personalInfo.github.replace(/^https?:\/\//, '').replace(/\/+$/, '')}
+        </a>
+      )}
+    </div>
+  </>
 )}
-          </div>
         </div>
 
         {/* Blue Line */}
         <div className="w-full h-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-12"></div>
 
         {/* Professional Summary */}
-        {summary && (
+        {(summary || isInlineEdit) && (
           <div className="cv-section mb-12">
             <h2 className="cv-section-title text-3xl font-bold text-blue-700 mb-6 border-b-4 border-blue-600 inline-block pb-2">
               PROFESSIONAL SUMMARY
             </h2>
-            <p className="cv-summary text-gray-700 text-lg leading-relaxed">{summary}</p>
+            {isInlineEdit ? (
+              <textarea value={summary} onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))} className="w-full p-4 border rounded text-lg text-gray-800" />
+            ) : (
+              <p className="cv-summary text-gray-700 text-lg leading-relaxed">{summary}</p>
+            )}
           </div>
         )}
 
         {/* Skills */}
-        {skills && (
+        {(skills || isInlineEdit) && (
           <div className="cv-section mb-12">
             <h2 className="cv-section-title text-3xl font-bold text-blue-700 mb-6 border-b-4 border-blue-600 inline-block pb-2">
               SKILLS
             </h2>
-            <p className="cv-skills text-gray-700 text-lg">{skills}</p>
+            {isInlineEdit ? (
+              <textarea value={skills} onChange={(e) => setFormData(prev => ({ ...prev, skills: e.target.value }))} className="w-full p-4 border rounded text-lg text-gray-800" />
+            ) : (
+              <p className="cv-skills text-gray-700 text-lg">{skills}</p>
+            )}
           </div>
         )}
 
@@ -428,7 +692,11 @@ const generateProfessionalCV = () => {
           {technicalSkills && (
             <div className="cv-section mb-12">
               <h2 className="cv-section-title text-3xl font-bold text-blue-700 mb-6 border-b-4 border-blue-600 inline-block pb-2">TECHNICAL SKILLS</h2>
-              <p className="text-gray-700 text-lg">{technicalSkills}</p>
+              {isInlineEdit ? (
+                <textarea value={technicalSkills} onChange={(e) => setFormData(prev => ({ ...prev, technicalSkills: e.target.value }))} className="w-full p-4 border rounded text-lg text-gray-800" />
+              ) : (
+                <p className="text-gray-700 text-lg">{technicalSkills}</p>
+              )}
             </div>
           )}
 
@@ -439,7 +707,12 @@ const generateProfessionalCV = () => {
               WORK EXPERIENCE
             </h2>
             {experience.map((exp, i) => (
-              <div key={i} className="cv-item mb-10 pl-10 border-l-4 border-blue-500">
+              <div key={i} className="cv-item mb-10 pl-10 border-l-4 border-blue-500 relative">
+                {isInlineEdit && (
+                  <div className="absolute right-0 top-0">
+                    <button onClick={() => { setCurrentEntry({ ...exp, type: 'experience', index: i }); setShowEntryForm(true); }} className="text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Edit</button>
+                  </div>
+                )}
                 <h3 className="cv-item-title text-2xl font-bold text-gray-900">{exp.title}</h3>
                 <p className="cv-item-company text-xl text-blue-600 font-semibold mt-2">{exp.company}</p>
                 <p className="text-gray-600 italic mt-1">
@@ -458,7 +731,12 @@ const generateProfessionalCV = () => {
               EDUCATION
             </h2>
             {education.map((edu, i) => (
-              <div key={i} className="cv-item mb-10 pl-10 border-l-4 border-blue-500">
+              <div key={i} className="cv-item mb-10 pl-10 border-l-4 border-blue-500 relative">
+                {isInlineEdit && (
+                  <div className="absolute right-0 top-0">
+                    <button onClick={() => { setCurrentEntry({ ...edu, type: 'education', index: i }); setShowEntryForm(true); }} className="text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Edit</button>
+                  </div>
+                )}
                 <h3 className="cv-item-title text-2xl font-bold text-gray-900">{edu.title}</h3>
                 <p className="cv-item-company text-xl text-blue-600 font-semibold mt-2">{edu.company}</p>
                 <p className="text-gray-600 italic mt-1">
@@ -476,23 +754,7 @@ const generateProfessionalCV = () => {
             <h2 className="cv-section-title text-3xl font-bold text-blue-700 mb-8 border-b-4 border-blue-600 inline-block pb-2">
               PROJECTS
             </h2>
-            {projects.map((proj, i) => (
-              <div key={i} className="cv-item mb-10 pl-10 border-l-4 border-purple-500">
-                <h3 className="cv-item-title text-2xl font-bold text-gray-900">{proj.title}</h3>
-                {proj.url && (
-                  <a href={proj.url} target="_blank" rel="noopener noreferrer"
-                     className="text-purple-600 hover:underline font-medium text-lg block mt-2">
-                    View Project
-                  </a>
-                )}
-                <p className="text-gray-600 italic mt-2">
-                  {proj.startDate} – {proj.current ? 'Present' : proj.endDate || 'Present'}
-                </p>
-                <p className="cv-item-description mt-4 text-gray-700 leading-relaxed">
-                  {proj.description || 'No description available'}
-                </p>
-              </div>
-            ))}
+            {renderProjectsList('cv-item mb-10 pl-10 border-l-4 border-purple-500')}
           </div>
         )}
 
@@ -560,7 +822,12 @@ const generateProfessionalCV = () => {
               WORK EXPERIENCE
             </h2>
             {experience.map((exp, i) => (
-              <div key={i} className="mb-8 pl-8 border-l-4 border-black">
+              <div key={i} className="mb-8 pl-8 border-l-4 border-black relative">
+                {isInlineEdit && (
+                  <div className="absolute right-0 top-0">
+                    <button onClick={() => { setCurrentEntry({ ...exp, type: 'experience', index: i }); setShowEntryForm(true); }} className="text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Edit</button>
+                  </div>
+                )}
                 <h3 className="text-xl font-bold text-gray-900">{exp.title}</h3>
                 <p className="font-semibold text-gray-800 mt-1">{exp.company}</p>
                 <p className="text-sm italic text-gray-600 mt-1">
@@ -809,13 +1076,51 @@ const generateProfessionalCV = () => {
                         <label className="block text-sm font-medium text-purple-200 mb-2 capitalize">
                           {key === 'fullName' ? 'Full Name' : key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
                         </label>
-                        <input
-                          type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
-                          value={value}
-                          onChange={(e) => handlePersonalInfoChange(key, e.target.value)}
-                          className="w-full px-5 py-4 bg-white/10 border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/60 focus:border-purple-400 transition backdrop-blur-sm"
-                          placeholder={key === 'fullName' ? 'Dulaj Jayasundara' : key === 'email' ? 'dulaj@example.com' : key === 'phone' ? '+94 77 123 4567' : key === 'address' ? 'Colombo, Sri Lanka' : key === 'linkedin' ? 'https://linkedin.com/in/...' : key === 'github' ? 'https://github.com/...' : 'Website URL'}
-                        />
+
+                        {key === 'photo' ? (
+                          <div className="flex items-center gap-4">
+                            <div className="w-20 h-20 bg-white/5 overflow-hidden border border-white/10 flex items-center justify-center">
+                              {value ? (
+                                <img src={value} alt="Profile" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="text-gray-400 text-sm px-2">No photo</div>
+                              )}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <input id={`photo-upload-${key}`} type="file" accept="image/*" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+
+                                const validation = validateImageFile(file);
+                                if (!validation.ok) {
+                                  if (validation.reason === 'TYPE') toast.error('Invalid image type. Please upload JPG, PNG, or WebP.');
+                                  else if (validation.reason === 'SIZE') toast.error('Image is too large. Max size is 2 MB.');
+                                  e.target.value = '';
+                                  return;
+                                }
+
+                                const reader = new FileReader();
+                                reader.onload = (ev) => handlePersonalInfoChange('photo', ev.target.result);
+                                reader.readAsDataURL(file);
+                                e.target.value = '';
+                              }} className="hidden" />
+
+                              <label htmlFor={`photo-upload-${key}`} className="px-4 py-2 bg-white/10 rounded-2xl cursor-pointer hover:bg-white/20">Upload Photo</label>
+                              <button onClick={() => handlePersonalInfoChange('photo', '')} className="px-4 py-2 bg-white/10 rounded-2xl hover:bg-white/20">Remove</button>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2">Allowed types: JPG, PNG, WebP. Max size: 2 MB. Recommended: square image 400×400+</p>
+                          </div>
+                        ) : (
+                          <input
+                            type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
+                            value={value}
+                            onChange={(e) => handlePersonalInfoChange(key, e.target.value)}
+                            className="w-full px-5 py-4 bg-white/10 border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/60 focus:border-purple-400 transition backdrop-blur-sm"
+                            placeholder={key === 'fullName' ? 'Dulaj Jayasundara' : key === 'email' ? 'dulaj@example.com' : key === 'phone' ? '+94 77 123 4567' : key === 'address' ? 'Colombo, Sri Lanka' : key === 'linkedin' ? 'https://linkedin.com/in/...' : key === 'github' ? 'https://github.com/...' : 'Website URL'}
+                          />
+                        )}
+
                       </div>
                     ))}
                   </div>
@@ -982,6 +1287,24 @@ const generateProfessionalCV = () => {
 )}
 {activeTab === 'preview' && (
   <div className="max-w-4xl mx-auto my-10">
+    {/* Preview Toolbar: Upload / Edit / Save / Download */}
+    <div className="flex justify-end gap-3 mb-4">
+      <input ref={fileInputRef} type="file" accept="application/json,.json" className="hidden" onChange={handleUploadResume} />
+      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePreviewPhotoUpload} />
+
+     {/* <button onClick={() => fileInputRef.current?.click()} className="bg-white/10 text-gray-200 px-4 py-2 rounded-2xl hover:bg-white/20">Upload JSON</button> */}
+
+      <button onClick={() => photoInputRef.current?.click()} className="bg-white/10 text-gray-200 px-4 py-2 rounded-2xl hover:bg-white/20">Change Photo</button>
+
+      <button onClick={() => handlePersonalInfoChange('photo', '')} className="bg-white/10 text-gray-200 px-4 py-2 rounded-2xl hover:bg-white/20">Remove Photo</button>
+
+      <button onClick={() => setIsInlineEdit(prev => !prev)} className={`px-4 py-2 rounded-2xl font-semibold ${isInlineEdit ? 'bg-yellow-500 text-white' : 'bg-white/10 text-gray-200 hover:bg-white/20'}`}>{isInlineEdit ? 'Exit Edit' : 'Edit Preview'}</button>
+      {isInlineEdit && (
+        <button onClick={saveResume} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-2xl">Save Changes</button>
+      )}
+      <button onClick={downloadPDF} className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-4 py-2 rounded-2xl">Download PDF</button>
+    </div>
+
     <div 
   id="resume-pdf-content"
   className="bg-white mx-auto shadow-2xl rounded-3xl overflow-hidden"
