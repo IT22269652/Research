@@ -12,15 +12,19 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Mic, Plus, LayoutDashboard, Calendar, FileText, Settings, Home } from "lucide-react"
+import { Mic, Plus, LayoutDashboard, Calendar, FileText, Settings, Home, ClipboardList } from "lucide-react"
 
 const menuItems = [
   {
     title: "Home",
     icon: Home,
-    url: "/",
+    url: "/InterviewHome",
   },
-  
+   {
+    title: "Create Interview",
+    icon: Home,
+    url: "/CreateInterview",
+  },
   {
     title: "Dashboard",
     icon: LayoutDashboard,
@@ -29,30 +33,35 @@ const menuItems = [
   {
     title: "Scheduled Interview",
     icon: Calendar,
-    url: "/scheduled-interview",
+    url: "/InterviewDashboard/ScheduledInterview",
   },
   {
     title: "All Interview",
     icon: FileText,
-    url: "/all-interview",
+    url: "/InterviewDashboard/AllInterview",
   },
   {
-    title: "Settings",
-    icon: Settings,
-    url: "/settings",
+    title: "Interview Results",
+    icon: ClipboardList,
+    url: "/InterviewDashboard/Results",
   },
-  {
-  title: "Interview Results",
-  icon: FileText,
-  url: "/InterviewDashboard/Results",
-  },
-
 ]
 
 export function AppSidebar() {
   const pathname = usePathname();
 
   const isActive = (url) => {
+    // Exact match for home
+    if (url === "/") {
+      return pathname === "/";
+    }
+    
+    // Exact match for Dashboard (not matching child routes)
+    if (url === "/InterviewDashboard") {
+      return pathname === "/InterviewDashboard";
+    }
+    
+    // For other routes, check if pathname starts with the url
     return pathname === url || pathname.startsWith(url + '/');
   };
 
