@@ -365,7 +365,7 @@ export default function AssessmentScreen() {
               <Loader2 className="animate-spin w-5 h-5" /> Generating with AI...
             </>
           ) : (
-            "Generate 10 Questions"
+            "Generate 5 Questions"
           )}
         </button>
       </div>
