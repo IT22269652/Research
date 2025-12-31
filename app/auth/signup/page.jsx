@@ -79,13 +79,12 @@ export default function SignUp() {
     "Vavuniya",
   ];
 
-  // Validation Functions
+  // --- VALIDATION HELPERS ---
   const validateAge = (birthday) => {
     const today = new Date();
     const birthDate = new Date(birthday);
     const age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-
     if (
       monthDiff < 0 ||
       (monthDiff === 0 && today.getDate() < birthDate.getDate())
@@ -95,39 +94,24 @@ export default function SignUp() {
     return age >= 16;
   };
 
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  const validateSriLankanPhone = (phone) => {
-    // Sri Lankan phone numbers: +94XXXXXXXXX or 0XXXXXXXXX (10 digits after 0 or 9 digits after +94)
-    const phoneRegex = /^(?:\+94|0)(?:7[0-9]|[1-9][0-9])\d{7}$/;
-    return phoneRegex.test(phone.replace(/\s/g, ""));
-  };
+  const validateSriLankanPhone = (phone) =>
+    /^(?:\+94|0)(?:7[0-9]|[1-9][0-9])\d{7}$/.test(phone.replace(/\s/g, ""));
 
-  const validatePassword = (password) => {
-    return password.length >= 8;
-  };
+  const validatePassword = (password) => password.length >= 8;
 
+  // --- HANDLERS ---
   const handleApplicantChange = (e) => {
     const { name, value } = e.target;
     setApplicantForm((prev) => ({ ...prev, [name]: value }));
-
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleCompanyChange = (e) => {
     const { name, value } = e.target;
     setCompanyForm((prev) => ({ ...prev, [name]: value }));
-
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleGoBack = () => {
@@ -135,102 +119,116 @@ export default function SignUp() {
     setErrors({});
   };
 
-  const handleApplicantSubmit = (e) => {
+  // --- SUBMIT APPLICANT (UPDATED WITH BACKEND CONNECTION) ---
+  const handleApplicantSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
 
-    // Validate birthday
-    if (!applicantForm.birthday) {
-      newErrors.birthday = "Birthday is required";
-    } else if (!validateAge(applicantForm.birthday)) {
+    if (!applicantForm.birthday) newErrors.birthday = "Birthday is required";
+    else if (!validateAge(applicantForm.birthday))
       newErrors.birthday = "You must be at least 16 years old";
-    }
 
-    // Validate email
-    if (!applicantForm.email) {
-      newErrors.email = "Email is required";
-    } else if (!validateEmail(applicantForm.email)) {
-      newErrors.email =
-        "Please enter a valid email address (e.g., you@example.com)";
-    }
+    if (!applicantForm.email) newErrors.email = "Email is required";
+    else if (!validateEmail(applicantForm.email))
+      newErrors.email = "Invalid email address";
 
-    // Validate contact number
-    if (!applicantForm.contactNumber) {
+    if (!applicantForm.contactNumber)
       newErrors.contactNumber = "Contact number is required";
-    } else if (!validateSriLankanPhone(applicantForm.contactNumber)) {
-      newErrors.contactNumber =
-        "Please enter a valid Sri Lankan phone number (e.g., 0771234567 or +94771234567)";
-    }
+    else if (!validateSriLankanPhone(applicantForm.contactNumber))
+      newErrors.contactNumber = "Invalid Sri Lankan phone number";
 
-    // Validate password
-    if (!applicantForm.password) {
-      newErrors.password = "Password is required";
-    } else if (!validatePassword(applicantForm.password)) {
-      newErrors.password = "Password must be at least 8 characters long";
-    }
+    if (!applicantForm.password) newErrors.password = "Password is required";
+    else if (!validatePassword(applicantForm.password))
+      newErrors.password = "Password must be at least 8 characters";
 
-    // Validate confirm password
-    if (!applicantForm.confirmPassword) {
+    if (!applicantForm.confirmPassword)
       newErrors.confirmPassword = "Please confirm your password";
-    } else if (applicantForm.password !== applicantForm.confirmPassword) {
+    else if (applicantForm.password !== applicantForm.confirmPassword)
       newErrors.confirmPassword = "Passwords do not match";
-    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    console.log("Applicant Form:", applicantForm);
-    alert("Form submitted successfully!");
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "applicant",
+          ...applicantForm,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Registration Successful! Please Login.");
+        window.location.href = "/auth/login";
+      } else {
+        alert(data.error || "Registration failed");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Server connection failed. Is the backend running?");
+    }
   };
 
-  const handleCompanySubmit = (e) => {
+  // --- SUBMIT COMPANY (UPDATED WITH BACKEND CONNECTION) ---
+  const handleCompanySubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
 
-    // Validate email
-    if (!companyForm.email) {
-      newErrors.email = "Email is required";
-    } else if (!validateEmail(companyForm.email)) {
-      newErrors.email =
-        "Please enter a valid email address (e.g., you@example.com)";
-    }
+    if (!companyForm.email) newErrors.email = "Email is required";
+    else if (!validateEmail(companyForm.email))
+      newErrors.email = "Invalid email address";
 
-    // Validate contact number
-    if (!companyForm.contactNumber) {
+    if (!companyForm.contactNumber)
       newErrors.contactNumber = "Contact number is required";
-    } else if (!validateSriLankanPhone(companyForm.contactNumber)) {
-      newErrors.contactNumber =
-        "Please enter a valid Sri Lankan phone number (e.g., 0771234567 or +94771234567)";
-    }
+    else if (!validateSriLankanPhone(companyForm.contactNumber))
+      newErrors.contactNumber = "Invalid Sri Lankan phone number";
 
-    // Validate password
-    if (!companyForm.password) {
-      newErrors.password = "Password is required";
-    } else if (!validatePassword(companyForm.password)) {
-      newErrors.password = "Password must be at least 8 characters long";
-    }
+    if (!companyForm.password) newErrors.password = "Password is required";
+    else if (!validatePassword(companyForm.password))
+      newErrors.password = "Password must be at least 8 characters";
 
-    // Validate confirm password
-    if (!companyForm.confirmPassword) {
+    if (!companyForm.confirmPassword)
       newErrors.confirmPassword = "Please confirm your password";
-    } else if (companyForm.password !== companyForm.confirmPassword) {
+    else if (companyForm.password !== companyForm.confirmPassword)
       newErrors.confirmPassword = "Passwords do not match";
-    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    console.log("Company Form:", companyForm);
-    alert("Form submitted successfully!");
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "company",
+          ...companyForm,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Company Registration Successful! Please Login.");
+        window.location.href = "/auth/login";
+      } else {
+        alert(data.error || "Registration failed");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Server connection failed. Is the backend running?");
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Header - Same as About Us */}
       <nav className="fixed w-full bg-slate-900/80 backdrop-blur-lg z-50 border-b border-purple-500/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -243,104 +241,12 @@ export default function SignUp() {
                 AI Career Guide
               </span>
             </div>
-
-            {/* Desktop Menu */}
-            <div className="hidden md:flex items-center space-x-8">
-              <a
-                href="/"
-                className="text-gray-300 hover:text-purple-400 transition"
-              >
-                Home
-              </a>
-              <a
-                href="/"
-                className="text-gray-300 hover:text-purple-400 transition"
-              >
-                Features
-              </a>
-              <a
-                href="/about"
-                className="text-gray-300 hover:text-purple-400 transition"
-              >
-                About
-              </a>
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => (window.location.href = "/auth/login")}
-                  className="flex items-center space-x-2 text-gray-300 hover:text-purple-400 transition"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>Login</span>
-                </button>
-                <button
-                  onClick={() => (window.location.href = "/auth/signup")}
-                  className="flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-purple-500/50 transition"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Sign Up</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              className="md:hidden text-white"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              {isMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-slate-800/95 backdrop-blur-lg">
-            <div className="px-4 pt-2 pb-4 space-y-2">
-              <a
-                href="/"
-                className="block text-gray-300 hover:text-purple-400 py-2"
-              >
-                Home
-              </a>
-              <a
-                href="/#features"
-                className="block text-gray-300 hover:text-purple-400 py-2"
-              >
-                Features
-              </a>
-              <a
-                href="/about"
-                className="block text-gray-300 hover:text-purple-400 py-2"
-              >
-                About
-              </a>
-              <button
-                onClick={() => (window.location.href = "/auth/login")}
-                className="w-full flex items-center justify-center space-x-2 text-gray-300 hover:text-purple-400 py-2 border border-gray-600 rounded-full mt-2"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Login</span>
-              </button>
-              <button
-                onClick={() => (window.location.href = "/auth/signup")}
-                className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-full"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>Sign Up</span>
-              </button>
-            </div>
-          </div>
-        )}
       </nav>
 
-      {/* Main Content */}
       <main className="pt-24 pb-12 px-4">
         <div className="max-w-2xl mx-auto">
-          {/* Role Selection */}
           {step === "role" && (
             <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 sm:p-12">
               <div className="text-center mb-10">
@@ -356,12 +262,10 @@ export default function SignUp() {
               </div>
 
               <div className="grid sm:grid-cols-2 gap-6">
-                {/* Applicant Button */}
                 <button
                   onClick={() => setStep("applicant")}
                   className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 p-8 hover:from-purple-500/30 hover:to-pink-500/30 transition-all duration-300"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                   <div className="relative z-10">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4">
                       <User className="w-8 h-8 text-white" />
@@ -375,12 +279,10 @@ export default function SignUp() {
                   </div>
                 </button>
 
-                {/* Company Button */}
                 <button
                   onClick={() => setStep("company")}
                   className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 p-8 hover:from-cyan-500/30 hover:to-blue-500/30 transition-all duration-300"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                   <div className="relative z-10">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center mx-auto mb-4">
                       <Building2 className="w-8 h-8 text-white" />
@@ -397,7 +299,6 @@ export default function SignUp() {
             </div>
           )}
 
-          {/* Applicant Sign Up Form */}
           {step === "applicant" && (
             <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 sm:p-12">
               <div className="flex items-center justify-between mb-8">
@@ -405,25 +306,19 @@ export default function SignUp() {
                   onClick={handleGoBack}
                   className="inline-flex items-center gap-2 text-purple-300 hover:text-purple-200 transition"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="w-4 h-4" />{" "}
                   <span className="text-sm">Go Back</span>
                 </button>
                 <div className="flex items-center gap-2 text-purple-300">
-                  <User className="w-5 h-5" />
+                  <User className="w-5 h-5" />{" "}
                   <span className="text-sm font-medium">Applicant</span>
                 </div>
               </div>
 
               <div className="text-center mb-8">
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-                  Create Your{" "}
-                  <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    Account
-                  </span>
+                  Create Your Account
                 </h2>
-                <p className="text-gray-300 text-sm">
-                  Fill in your details to get started
-                </p>
               </div>
 
               <div className="space-y-5">
@@ -431,62 +326,47 @@ export default function SignUp() {
                   <label className="block text-sm text-gray-300 mb-2">
                     Full Name
                   </label>
-                  <div className="relative">
-                    <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="fullName"
-                      value={applicantForm.fullName}
-                      onChange={handleApplicantChange}
-                      placeholder="John Doe"
-                      required
-                      className="w-full rounded-2xl bg-slate-900/60 border border-white/10 pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={applicantForm.fullName}
+                    onChange={handleApplicantChange}
+                    placeholder="John Doe"
+                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/60"
+                  />
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Name with Initials
                   </label>
-                  <div className="relative">
-                    <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="nameWithInitials"
-                      value={applicantForm.nameWithInitials}
-                      onChange={handleApplicantChange}
-                      placeholder="J.D. Doe"
-                      required
-                      className="w-full rounded-2xl bg-slate-900/60 border border-white/10 pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    name="nameWithInitials"
+                    value={applicantForm.nameWithInitials}
+                    onChange={handleApplicantChange}
+                    placeholder="J.D. Doe"
+                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/60"
+                  />
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Birthday
                   </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="date"
-                      name="birthday"
-                      value={applicantForm.birthday}
-                      onChange={handleApplicantChange}
-                      required
-                      className={`w-full rounded-2xl bg-slate-900/60 border ${
-                        errors.birthday ? "border-red-500" : "border-white/10"
-                      } pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
-                    />
-                  </div>
+                  <input
+                    type="date"
+                    name="birthday"
+                    value={applicantForm.birthday}
+                    onChange={handleApplicantChange}
+                    className={`w-full rounded-2xl bg-slate-900/60 border ${
+                      errors.birthday ? "border-red-500" : "border-white/10"
+                    } px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
+                  />
                   {errors.birthday && (
                     <p className="text-red-400 text-xs mt-1">
                       {errors.birthday}
                     </p>
                   )}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Gender
@@ -495,7 +375,6 @@ export default function SignUp() {
                     name="gender"
                     value={applicantForm.gender}
                     onChange={handleApplicantChange}
-                    required
                     className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/60"
                   >
                     <option value="">Select Gender</option>
@@ -504,78 +383,64 @@ export default function SignUp() {
                     <option value="other">Other</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Contact Number
                   </label>
-                  <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="tel"
-                      name="contactNumber"
-                      value={applicantForm.contactNumber}
-                      onChange={handleApplicantChange}
-                      placeholder="+94 77 123 4567"
-                      required
-                      className={`w-full rounded-2xl bg-slate-900/60 border ${
-                        errors.contactNumber
-                          ? "border-red-500"
-                          : "border-white/10"
-                      } pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
-                    />
-                  </div>
+                  <input
+                    type="tel"
+                    name="contactNumber"
+                    value={applicantForm.contactNumber}
+                    onChange={handleApplicantChange}
+                    placeholder="+94 77 123 4567"
+                    className={`w-full rounded-2xl bg-slate-900/60 border ${
+                      errors.contactNumber
+                        ? "border-red-500"
+                        : "border-white/10"
+                    } px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
+                  />
                   {errors.contactNumber && (
                     <p className="text-red-400 text-xs mt-1">
                       {errors.contactNumber}
                     </p>
                   )}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Email Address
                   </label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="email"
-                      name="email"
-                      value={applicantForm.email}
-                      onChange={handleApplicantChange}
-                      placeholder="you@example.com"
-                      required
-                      className={`w-full rounded-2xl bg-slate-900/60 border ${
-                        errors.email ? "border-red-500" : "border-white/10"
-                      } pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
-                    />
-                  </div>
+                  <input
+                    type="email"
+                    name="email"
+                    value={applicantForm.email}
+                    onChange={handleApplicantChange}
+                    placeholder="you@example.com"
+                    className={`w-full rounded-2xl bg-slate-900/60 border ${
+                      errors.email ? "border-red-500" : "border-white/10"
+                    } px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
+                  />
                   {errors.email && (
                     <p className="text-red-400 text-xs mt-1">{errors.email}</p>
                   )}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
-                    Create Password
+                    Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type={showPassword ? "text" : "password"}
                       name="password"
                       value={applicantForm.password}
                       onChange={handleApplicantChange}
-                      placeholder="••••••••"
-                      required
                       className={`w-full rounded-2xl bg-slate-900/60 border ${
                         errors.password ? "border-red-500" : "border-white/10"
-                      } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
+                      } px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
                     >
                       {showPassword ? (
                         <EyeOff className="w-5 h-5" />
@@ -590,32 +455,28 @@ export default function SignUp() {
                     </p>
                   )}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Confirm Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       name="confirmPassword"
                       value={applicantForm.confirmPassword}
                       onChange={handleApplicantChange}
-                      placeholder="••••••••"
-                      required
                       className={`w-full rounded-2xl bg-slate-900/60 border ${
                         errors.confirmPassword
                           ? "border-red-500"
                           : "border-white/10"
-                      } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
+                      } px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
                     />
                     <button
                       type="button"
                       onClick={() =>
                         setShowConfirmPassword(!showConfirmPassword)
                       }
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="w-5 h-5" />
@@ -641,7 +502,6 @@ export default function SignUp() {
             </div>
           )}
 
-          {/* Company Sign Up Form */}
           {step === "company" && (
             <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 sm:p-12">
               <div className="flex items-center justify-between mb-8">
@@ -649,25 +509,19 @@ export default function SignUp() {
                   onClick={handleGoBack}
                   className="inline-flex items-center gap-2 text-cyan-300 hover:text-cyan-200 transition"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="w-4 h-4" />{" "}
                   <span className="text-sm">Go Back</span>
                 </button>
                 <div className="flex items-center gap-2 text-cyan-300">
-                  <Building2 className="w-5 h-5" />
+                  <Building2 className="w-5 h-5" />{" "}
                   <span className="text-sm font-medium">Company</span>
                 </div>
               </div>
 
               <div className="text-center mb-8">
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-                  Register Your{" "}
-                  <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                    Company
-                  </span>
+                  Register Your Company
                 </h2>
-                <p className="text-gray-300 text-sm">
-                  Fill in your company details
-                </p>
               </div>
 
               <div className="space-y-5">
@@ -675,153 +529,120 @@ export default function SignUp() {
                   <label className="block text-sm text-gray-300 mb-2">
                     Company Name
                   </label>
-                  <div className="relative">
-                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="companyName"
-                      value={companyForm.companyName}
-                      onChange={handleCompanyChange}
-                      placeholder="Tech Corp Ltd."
-                      required
-                      className="w-full rounded-2xl bg-slate-900/60 border border-white/10 pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    name="companyName"
+                    value={companyForm.companyName}
+                    onChange={handleCompanyChange}
+                    placeholder="Tech Corp Ltd."
+                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
+                  />
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Industry
                   </label>
-                  <div className="relative">
-                    <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <select
-                      name="industry"
-                      value={companyForm.industry}
-                      onChange={handleCompanyChange}
-                      required
-                      className="w-full rounded-2xl bg-slate-900/60 border border-white/10 pl-12 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60 appearance-none"
-                    >
-                      <option value="">Select Industry</option>
-                      <option value="IT">IT</option>
-                      <option value="Engineering">Engineering</option>
-                      <option value="Business">Business</option>
-                    </select>
-                  </div>
+                  <select
+                    name="industry"
+                    value={companyForm.industry}
+                    onChange={handleCompanyChange}
+                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
+                  >
+                    <option value="">Select Industry</option>
+                    <option value="IT">IT</option>
+                    <option value="Engineering">Engineering</option>
+                    <option value="Business">Business</option>
+                  </select>
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Business Registration Number
                   </label>
-                  <div className="relative">
-                    <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="registrationNumber"
-                      value={companyForm.registrationNumber}
-                      onChange={handleCompanyChange}
-                      placeholder="PV 12345"
-                      required
-                      className="w-full rounded-2xl bg-slate-900/60 border border-white/10 pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    name="registrationNumber"
+                    value={companyForm.registrationNumber}
+                    onChange={handleCompanyChange}
+                    placeholder="PV 12345"
+                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
+                  />
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Branch Location
                   </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <select
-                      name="branchLocation"
-                      value={companyForm.branchLocation}
-                      onChange={handleCompanyChange}
-                      required
-                      className="w-full rounded-2xl bg-slate-900/60 border border-white/10 pl-12 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60 appearance-none"
-                    >
-                      <option value="">Select District</option>
-                      {sriLankanDistricts.map((district) => (
-                        <option key={district} value={district}>
-                          {district}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <select
+                    name="branchLocation"
+                    value={companyForm.branchLocation}
+                    onChange={handleCompanyChange}
+                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
+                  >
+                    <option value="">Select District</option>
+                    {sriLankanDistricts.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Email Address
                   </label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="email"
-                      name="email"
-                      value={companyForm.email}
-                      onChange={handleCompanyChange}
-                      placeholder="company@example.com"
-                      required
-                      className={`w-full rounded-2xl bg-slate-900/60 border ${
-                        errors.email ? "border-red-500" : "border-white/10"
-                      } pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
-                    />
-                  </div>
+                  <input
+                    type="email"
+                    name="email"
+                    value={companyForm.email}
+                    onChange={handleCompanyChange}
+                    placeholder="company@example.com"
+                    className={`w-full rounded-2xl bg-slate-900/60 border ${
+                      errors.email ? "border-red-500" : "border-white/10"
+                    } px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
+                  />
                   {errors.email && (
                     <p className="text-red-400 text-xs mt-1">{errors.email}</p>
                   )}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Contact Number
                   </label>
-                  <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="tel"
-                      name="contactNumber"
-                      value={companyForm.contactNumber}
-                      onChange={handleCompanyChange}
-                      placeholder="+94 11 234 5678"
-                      required
-                      className={`w-full rounded-2xl bg-slate-900/60 border ${
-                        errors.contactNumber
-                          ? "border-red-500"
-                          : "border-white/10"
-                      } pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
-                    />
-                  </div>
+                  <input
+                    type="tel"
+                    name="contactNumber"
+                    value={companyForm.contactNumber}
+                    onChange={handleCompanyChange}
+                    placeholder="+94 11 234 5678"
+                    className={`w-full rounded-2xl bg-slate-900/60 border ${
+                      errors.contactNumber
+                        ? "border-red-500"
+                        : "border-white/10"
+                    } px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
+                  />
                   {errors.contactNumber && (
                     <p className="text-red-400 text-xs mt-1">
                       {errors.contactNumber}
                     </p>
                   )}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Create Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type={showPassword ? "text" : "password"}
                       name="password"
                       value={companyForm.password}
                       onChange={handleCompanyChange}
-                      placeholder="••••••••"
-                      required
                       className={`w-full rounded-2xl bg-slate-900/60 border ${
                         errors.password ? "border-red-500" : "border-white/10"
-                      } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
+                      } px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
                     >
                       {showPassword ? (
                         <EyeOff className="w-5 h-5" />
@@ -836,32 +657,28 @@ export default function SignUp() {
                     </p>
                   )}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">
                     Confirm Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       name="confirmPassword"
                       value={companyForm.confirmPassword}
                       onChange={handleCompanyChange}
-                      placeholder="••••••••"
-                      required
                       className={`w-full rounded-2xl bg-slate-900/60 border ${
                         errors.confirmPassword
                           ? "border-red-500"
                           : "border-white/10"
-                      } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
+                      } px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
                     />
                     <button
                       type="button"
                       onClick={() =>
                         setShowConfirmPassword(!showConfirmPassword)
                       }
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="w-5 h-5" />
@@ -888,123 +705,6 @@ export default function SignUp() {
           )}
         </div>
       </main>
-
-      {/* Footer - Same as About Us */}
-      <footer className="bg-slate-900/50 border-t border-white/10 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Brain className="w-6 h-6 text-purple-400" />
-                <span className="text-lg font-bold text-white">
-                  AI Career Guide
-                </span>
-              </div>
-              <p className="text-gray-400 text-sm">
-                Empowering careers with AI technology tailored for the Sri
-                Lankan job market.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="text-white font-semibold mb-4">Features</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li>
-                  <a
-                    href="/resume-builder"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Resume Builder
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/interview-practice"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Interview Practice
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/career-guidance"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Career Guidance
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/InterviewDashboard"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Job Matching
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-white font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li>
-                  <a href="/about" className="hover:text-purple-400 transition">
-                    About Us
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Contact
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Privacy Policy
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Terms of Service
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-white font-semibold mb-4">Connect</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    LinkedIn
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Facebook
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Twitter
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Instagram
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-white/10 pt-8 text-center text-sm text-gray-400">
-            <p>
-              © 2025 AI Career Guidance System. All rights reserved. Made for
-              Sri Lankan Job Market.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
