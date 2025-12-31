@@ -22,6 +22,20 @@ function CreateInterview() {
     });
   }
 
+  const handleSubmit = async () => {
+    const res = await fetch("/api/interview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      router.push(`/InterviewDashboard/Results/${data.id}`);
+    }
+  };
+
+
   return (
     <div className="min-h-screen p-10">
       <div className="flex items-center gap-5 justify-center relative mb-8">
@@ -35,7 +49,7 @@ function CreateInterview() {
         value={step * 33.33} 
         className='mt-6 mb-8 max-w-2xl mx-auto h-2 bg-slate-800/50 [&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:to-purple-500'
       />
-      <FormContainer onHandleInputChanges={onHandleInputChanges}/>
+      <FormContainer onHandleInputChanges={onHandleInputChanges} handleSubmit={handleSubmit}/>
     </div>
   )
 }
