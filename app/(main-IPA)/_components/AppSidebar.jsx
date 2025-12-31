@@ -20,6 +20,7 @@ const menuItems = [
     icon: Home,
     url: "/",
   },
+  
   {
     title: "Dashboard",
     icon: LayoutDashboard,
@@ -40,6 +41,12 @@ const menuItems = [
     icon: Settings,
     url: "/settings",
   },
+  {
+  title: "Interview Results",
+  icon: FileText,
+  url: "/InterviewDashboard/Results",
+  },
+
 ]
 
 export function AppSidebar() {
