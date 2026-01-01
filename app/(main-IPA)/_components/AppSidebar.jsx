@@ -12,47 +12,56 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Mic, Plus, LayoutDashboard, Calendar, FileText, Settings, Home } from "lucide-react"
+import { Mic, Plus, LayoutDashboard, Calendar, FileText, Settings, Home, ClipboardList } from "lucide-react"
 
 const menuItems = [
   {
     title: "Home",
     icon: Home,
-    url: "/",
+    url: "/InterviewHome",
   },
-  
   {
     title: "Dashboard",
     icon: LayoutDashboard,
     url: "/InterviewDashboard",
   },
   {
+    title: "Create Interview",
+    icon: Plus,
+    url: "/InterviewDashboard/CreateInterview",
+  },
+  {
     title: "Scheduled Interview",
     icon: Calendar,
-    url: "/scheduled-interview",
+    url: "/InterviewDashboard/ScheduledInterview",
   },
   {
     title: "All Interview",
     icon: FileText,
-    url: "/all-interview",
+    url: "/InterviewDashboard/AllInterview",
   },
   {
-    title: "Settings",
-    icon: Settings,
-    url: "/settings",
+    title: "Interview Results",
+    icon: ClipboardList,
+    url: "/InterviewDashboard/Results",
   },
-  {
-  title: "Interview Results",
-  icon: FileText,
-  url: "/InterviewDashboard/Results",
-  },
-
 ]
 
 export function AppSidebar() {
   const pathname = usePathname();
 
   const isActive = (url) => {
+    // Exact match for home
+    if (url === "/InterviewHome") {
+      return pathname === "/InterviewHome";
+    }
+    
+    // Exact match for Dashboard (not matching child routes)
+    if (url === "/InterviewDashboard") {
+      return pathname === "/InterviewDashboard";
+    }
+    
+    // For other routes, check if pathname starts with the url
     return pathname === url || pathname.startsWith(url + '/');
   };
 
@@ -80,19 +89,6 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-2">
-              {/* Create New Interview Button */}
-              <SidebarMenuItem className="mb-4">
-                <SidebarMenuButton 
-                  asChild 
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-2 py-7 rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all duration-300 hover:scale-[1.02]"
-                >
-                  <a href="/InterviewDashboard/CreateInterview" className="flex items-center gap-3">
-                    <Plus className="w-6 h-6" />
-                    <span className="text-base font-semibold">Create New Interview</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
               {/* Menu Items */}
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>

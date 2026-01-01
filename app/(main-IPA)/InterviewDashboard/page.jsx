@@ -31,7 +31,7 @@ function Dashboard() {
         </Link>
 
         {/* View All Interviews */}
-        <div className="group bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl hover:bg-slate-800/60 hover:border-purple-500/30 transition-all duration-300 cursor-pointer">
+        <Link href={'InterviewDashboard/ScheduledInterview'} className="group bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl hover:bg-slate-800/60 hover:border-purple-500/30 transition-all duration-300 cursor-pointer">
           <div className="flex flex-col items-start">
             <div className="w-16 h-16 bg-purple-600/20 border border-purple-500/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-600/30 group-hover:scale-110 transition-all duration-300">
               <View className="w-8 h-8 text-purple-400" />
@@ -43,7 +43,7 @@ function Dashboard() {
               Schedule and previous interviews
             </p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Previously Created Interviews */}
