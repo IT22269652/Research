@@ -1,3 +1,33 @@
+
+import React from 'react';
+
+export default function FormContainer({ onHandleInputChanges }) {
+  return (
+    <div className="max-w-2xl mx-auto bg-slate-900/40 border border-white/10 rounded-2xl p-6">
+      <p className="text-gray-300 mb-4">Simple placeholder form (add fields as needed):</p>
+      <div className="grid grid-cols-1 gap-3">
+        <input
+          type="text"
+          placeholder="Interview Title"
+          onChange={(e) => onHandleInputChanges('title', e.target.value)}
+          className="rounded-2xl bg-slate-800 border border-white/10 px-4 py-2 text-white"
+        />
+        <input
+          type="text"
+          placeholder="Candidate Name"
+          onChange={(e) => onHandleInputChanges('candidate', e.target.value)}
+          className="rounded-2xl bg-slate-800 border border-white/10 px-4 py-2 text-white"
+        />
+        <button
+          onClick={() => alert('This is a placeholder — implement steps as needed')}
+          className="mt-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-2xl"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
 "use client"
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -13,7 +43,7 @@ import { InterviewType } from '@/services/Constants'
 import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
 
-function FormContainer({onHandleInputChanges}) {
+function FormContainer({onHandleInputChanges, handleSubmit}) {
   const [interviewType, setInterviewType] = useState([]);
 
   useEffect(() => {
@@ -64,21 +94,22 @@ function FormContainer({onHandleInputChanges}) {
           />
         </div>  
 
-        <div className='mt-8'>
-          <h2 className='text-base font-semibold mb-3 text-gray-200'>Interview Duration</h2>
-          <Select onValueChange={(value) => onHandleInputChanges('duration', value)}>
-            <SelectTrigger className="w-full mt-2 h-12 bg-slate-900/50 border-slate-600/50 text-gray-100 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20">
-              <SelectValue placeholder="15 Min" />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700/50 backdrop-blur-lg">
-              <SelectItem value="5 Min" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">5 Min</SelectItem>
-              <SelectItem value="15 Min" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">15 Min</SelectItem>
-              <SelectItem value="30 Min" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">30 Min</SelectItem>
-              <SelectItem value="45 Min" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">45 Min</SelectItem>
-              <SelectItem value="60 Min" className="text-gray-100 hover:bg-purple-600/20 focus:bg-purple-600/20">60 Min</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>  
+       <div className='mt-8'>
+  <h2 className='text-base font-semibold mb-3 text-gray-200'>
+    Question Count
+  </h2>
+  <Select onValueChange={(value) => onHandleInputChanges('questionCount', Number(value))}>
+    <SelectTrigger className="w-full mt-2 h-12 bg-slate-900/50 border-slate-600/50">
+      <SelectValue placeholder="Select question count" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="10">10 Questions</SelectItem>
+      <SelectItem value="15">15 Questions</SelectItem>
+      <SelectItem value="20">20 Questions</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+
 
         <div className='mt-8'>
           <h2 className='text-base font-semibold mb-3 text-gray-200'>Interview Type</h2>
@@ -101,9 +132,10 @@ function FormContainer({onHandleInputChanges}) {
         </div> 
         
         <div className='mt-10 flex justify-end'>
-          <Button className='px-8 h-12 gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all duration-300 transform hover:scale-105 rounded-xl font-semibold'>
-            Generate Question <ArrowRight className='h-4 w-4' /> 
+          <Button onClick={handleSubmit}>
+              Generate Question <ArrowRight />
           </Button>
+
         </div> 
       </div>
     </div>
