@@ -20,15 +20,15 @@ const menuItems = [
     icon: Home,
     url: "/InterviewHome",
   },
-   {
-    title: "Create Interview",
-    icon: Home,
-    url: "/CreateInterview",
-  },
   {
     title: "Dashboard",
     icon: LayoutDashboard,
     url: "/InterviewDashboard",
+  },
+  {
+    title: "Create Interview",
+    icon: Plus,
+    url: "/InterviewDashboard/CreateInterview",
   },
   {
     title: "Scheduled Interview",
@@ -52,8 +52,8 @@ export function AppSidebar() {
 
   const isActive = (url) => {
     // Exact match for home
-    if (url === "/") {
-      return pathname === "/";
+    if (url === "/InterviewHome") {
+      return pathname === "/InterviewHome";
     }
     
     // Exact match for Dashboard (not matching child routes)
@@ -89,19 +89,6 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-2">
-              {/* Create New Interview Button */}
-              <SidebarMenuItem className="mb-4">
-                <SidebarMenuButton 
-                  asChild 
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-2 py-7 rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all duration-300 hover:scale-[1.02]"
-                >
-                  <a href="/InterviewDashboard/CreateInterview" className="flex items-center gap-3">
-                    <Plus className="w-6 h-6" />
-                    <span className="text-base font-semibold">Create New Interview</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
               {/* Menu Items */}
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
