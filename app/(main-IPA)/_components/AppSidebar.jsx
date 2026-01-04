@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar,
   SidebarContent,
@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Mic, Plus, LayoutDashboard, Calendar, FileText, Settings, Home, ClipboardList } from "lucide-react"
+import { Mic, Plus, LayoutDashboard, Calendar, FileText, Settings, Home, ClipboardList, LogOut } from "lucide-react"
 
 const menuItems = [
   {
@@ -49,6 +49,7 @@ const menuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (url) => {
     // Exact match for home
@@ -63,6 +64,16 @@ export function AppSidebar() {
     
     // For other routes, check if pathname starts with the url
     return pathname === url || pathname.startsWith(url + '/');
+  };
+
+  const handleLogout = () => {
+    // Add any logout logic here (e.g., clearing tokens, session data)
+    // For example:
+    // localStorage.removeItem('token');
+    // sessionStorage.clear();
+    
+    // Navigate to home page
+    router.push('/');
   };
 
   return (
@@ -121,6 +132,21 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Logout Button */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-4 py-4 px-4 rounded-xl transition-all duration-200 hover:bg-red-600/20 border-l-4 border-transparent hover:border-red-500 w-full text-left group"
+                  >
+                    <LogOut className="w-6 h-6 text-gray-400 group-hover:text-red-400" />
+                    <span className="text-base font-medium text-gray-300 group-hover:text-red-300">
+                      Logout
+                    </span>
+                  </button>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
