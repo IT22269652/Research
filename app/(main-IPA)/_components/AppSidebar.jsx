@@ -36,11 +36,6 @@ const menuItems = [
     url: "/InterviewDashboard/ScheduledInterview",
   },
   {
-    title: "All Interview",
-    icon: FileText,
-    url: "/InterviewDashboard/AllInterview",
-  },
-  {
     title: "Interview Results",
     icon: ClipboardList,
     url: "/InterviewDashboard/Results",

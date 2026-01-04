@@ -4,8 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, ArrowLeft, Loader2, CheckCircle, XCircle } from 'lucide-react'
-import { Progress } from '@/components/ui/progress'
+import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -13,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { InterviewType } from '@/services/Constants'
+import { InterviewType } from '@/services/Constants' // Ensure this path is correct
 import { useToast } from "@/hooks/use-toast"
 
 export default function CreateInterview() {
@@ -44,39 +43,24 @@ export default function CreateInterview() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
+    // --- Validation Checks ---
     if (!formData.jobPosition) {
-      toast({
-        title: "Error",
-        description: "Please select a job position",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Please select a job position", variant: "destructive" });
       return;
     }
-    
     if (!formData.jobDescription) {
-      toast({
-        title: "Error",
-        description: "Please enter a job description",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Please enter a job description", variant: "destructive" });
       return;
     }
-    
     if (formData.type.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select at least one interview type",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Please select at least one interview type", variant: "destructive" });
       return;
     }
 
     setLoading(true);
 
     try {
-      console.log("Sending request:", formData);
-      
+      // Calling Node.js Backend (Port 5000)
       const res = await fetch("http://localhost:5000/api/interview/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,35 +68,26 @@ export default function CreateInterview() {
       });
 
       const data = await res.json();
-      console.log("Response:", data);
 
       if (data.success) {
-        // Show success toast
         toast({
           title: "Success! 🎉",
           description: "Interview questions generated successfully",
           className: "bg-green-500/20 border-green-500",
         });
         
-        // Wait a moment for toast to show, then navigate
+        // --- UPDATED REDIRECT HERE ---
+        // We use query params so we only need ONE Results page
         setTimeout(() => {
-          router.push(`/Results/${data.id}`);
+          router.push(`/InterviewDashboard/Results?id=${data.id}`);
         }, 500);
+        
       } else {
-        // Show error toast
-        toast({
-          title: "Error",
-          description: data.message || "Failed to generate questions",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: data.message || "Failed to generate", variant: "destructive" });
       }
     } catch (error) {
       console.error("Error:", error);
-      toast({
-        title: "Connection Error",
-        description: "Could not connect to backend. Make sure backend is running on port 5000.",
-        variant: "destructive",
-      });
+      toast({ title: "Connection Error", description: "Could not connect to backend.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -145,7 +120,6 @@ export default function CreateInterview() {
                 <SelectItem value="Data Science">Data Science</SelectItem>
                 <SelectItem value="AI Engineering">AI Engineering</SelectItem>
                 <SelectItem value="UX/UI Designer">UX/UI Designer</SelectItem>
-                <SelectItem value="DevOps Engineer">DevOps Engineer</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -171,8 +145,6 @@ export default function CreateInterview() {
               <SelectContent className="bg-slate-800 text-white">
                 <SelectItem value="5">5 Questions</SelectItem>
                 <SelectItem value="10">10 Questions</SelectItem>
-                <SelectItem value="15">15 Questions</SelectItem>
-                <SelectItem value="20">20 Questions</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -187,7 +159,7 @@ export default function CreateInterview() {
                   onClick={() => toggleType(item.title)}
                   className={`flex items-center cursor-pointer gap-2 py-3 px-6 border rounded-xl transition-all ${
                     formData.type.includes(item.title) 
-                      ? 'bg-purple-600/20 text-purple-300 border-purple-500/50 scale-105 shadow-lg shadow-purple-500/10' 
+                      ? 'bg-purple-600/20 text-purple-300 border-purple-500/50 scale-105 shadow-lg' 
                       : 'bg-slate-900/50 border-slate-600/50 text-gray-300 hover:bg-slate-800/50'
                   }`}
                 >
@@ -199,22 +171,8 @@ export default function CreateInterview() {
           </div> 
           
           <div className='mt-10 flex justify-end'>
-            <Button 
-              onClick={handleSubmit} 
-              disabled={loading} 
-              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin'/> 
-                  Generating...
-                </>
-              ) : (
-                <>
-                  Generate Questions 
-                  <ArrowRight className='ml-2 h-4 w-4'/>
-                </>
-              )}
+            <Button onClick={handleSubmit} disabled={loading} className="bg-purple-600 hover:bg-purple-700">
+              {loading ? <><Loader2 className='mr-2 h-4 w-4 animate-spin'/> Generating...</> : "Generate Questions"}
             </Button>
           </div> 
         </div>
