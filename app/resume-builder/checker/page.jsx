@@ -7,9 +7,13 @@ import Link from 'next/link';
 export default function ResumeChecker() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeTab, setActiveTab] = useState('upload');
+  
+  // Data States
   const [resumeText, setResumeText] = useState('');
   const [jobDescription, setJobDescription] = useState('');
+  const [uploadedFile, setUploadedFile] = useState(null);
   
+  // Results State
   const [analysisResults, setAnalysisResults] = useState({
     atsScore: 0,
     grammarScore: 0,
@@ -19,50 +23,59 @@ export default function ResumeChecker() {
     improvements: []
   });
 
-  const analyzeResume = async () => {
-    setIsAnalyzing(true);
+const analyzeResume = async () => {
+  if (isAnalyzing) return;
+  setIsAnalyzing(true);
+
+  try {
+    const formData = new FormData();
+    if (uploadedFile) formData.append("file", uploadedFile);
+    if (resumeText) formData.append("resumeText", resumeText);
+    if (jobDescription) formData.append("jobDescription", jobDescription);
+
+    const response = await fetch("/api/check-resume", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("API ERROR:", text);
+      throw new Error("Resume analysis failed");
+    }
+
+    const data = await response.json();
     
-    // Simulate AI analysis
-    setTimeout(() => {
-      setAnalysisResults({
-        atsScore: 85,
-        grammarScore: 92,
-        keywordMatch: 78,
-        suggestions: [
-          'Add more action verbs to your experience descriptions',
-          'Include specific metrics and achievements',
-          'Optimize for ATS by using standard section headings',
-          'Add relevant keywords from the job description'
-        ],
-        strengths: [
-          'Clear contact information',
-          'Well-structured format',
-          'Relevant work experience',
-          'Good use of bullet points'
-        ],
-        improvements: [
-          'Add more quantifiable achievements',
-          'Include a professional summary',
-          'Optimize keywords for ATS',
-          'Consider adding a skills section'
-        ]
-      });
-      setIsAnalyzing(false);
-      setActiveTab('results');
-    }, 3000);
-  };
+    // FIX: Match the state setter name defined at the top of your component
+    setAnalysisResults(data); 
+    
+    // UX: Switch to results tab so the user sees the output immediately
+    setActiveTab('results');
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setResumeText(e.target.result);
-      };
-      reader.readAsText(file);
+      setUploadedFile(file);
+      // For Preview purpose only (PDFs won't show full text here, but will work in backend)
+      if (file.type === "text/plain") {
+          const reader = new FileReader();
+          reader.onload = (e) => setResumeText(e.target.result);
+          reader.readAsText(file);
+      } else {
+          setResumeText(`File Attached: ${file.name} (Ready for Analysis)`);
+      }
     }
   };
 
+  // Helper functions for UI colors
   const scoreColor = (score) => {
     if (score >= 80) return 'text-green-400';
     if (score >= 60) return 'text-yellow-400';
@@ -115,10 +128,11 @@ export default function ResumeChecker() {
               </button>
               <button
                 onClick={() => setActiveTab('results')}
+                disabled={analysisResults.atsScore === 0}
                 className={`px-6 py-3 rounded-xl transition ${
                   activeTab === 'results' 
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' 
-                    : 'text-gray-300 hover:text-white'
+                    : 'text-gray-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed'
                 }`}
               >
                 Analysis Results
@@ -147,23 +161,23 @@ export default function ResumeChecker() {
                     Upload Your Resume
                   </h3>
                   <div className="space-y-4">
-                    <div className="border-2 border-dashed border-white/20 rounded-2xl p-8 text-center">
+                    <div className="border-2 border-dashed border-white/20 rounded-2xl p-8 text-center relative hover:border-purple-500/50 transition-colors">
                       <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-300 mb-4">Upload your resume file</p>
+                      <p className="text-gray-300 mb-4">{uploadedFile ? uploadedFile.name : "Upload your resume file"}</p>
                       <input
                         type="file"
                         accept=".pdf,.doc,.docx,.txt"
                         onChange={handleFileUpload}
-                        className="hidden"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         id="resume-upload"
                       />
                       <label
                         htmlFor="resume-upload"
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-2xl hover:shadow-lg transition cursor-pointer"
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-2xl hover:shadow-lg transition cursor-pointer inline-block pointer-events-none"
                       >
-                        Choose File
+                        {uploadedFile ? "Change File" : "Choose File"}
                       </label>
-                      <p className="text-xs text-gray-400 mt-2">Supports PDF, DOC, DOCX, TXT</p>
+                      <p className="text-xs text-gray-400 mt-2">Supports PDF, DOCX, TXT</p>
                     </div>
                     
                     <div className="text-sm text-gray-400">
@@ -172,7 +186,10 @@ export default function ResumeChecker() {
                     
                     <textarea
                       value={resumeText}
-                      onChange={(e) => setResumeText(e.target.value)}
+                      onChange={(e) => {
+                          setResumeText(e.target.value);
+                          setUploadedFile(null); // Clear file if typing manually
+                      }}
                       className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60 h-40 resize-none"
                       placeholder="Paste your resume text here..."
                     />
@@ -188,7 +205,7 @@ export default function ResumeChecker() {
                     value={jobDescription}
                     onChange={(e) => setJobDescription(e.target.value)}
                     className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60 h-32 resize-none"
-                    placeholder="Paste the job description to get targeted analysis..."
+                    placeholder="Paste the job description here for better accuracy..."
                   />
                   <p className="text-xs text-gray-400 mt-2">
                     Adding a job description helps us provide more targeted suggestions and keyword optimization.
@@ -197,7 +214,7 @@ export default function ResumeChecker() {
               </div>
 
               {/* Analysis Features */}
-              <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
+              <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6 h-fit">
                 <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                   <Sparkles className="w-5 h-5" />
                   Analysis Features
@@ -205,13 +222,13 @@ export default function ResumeChecker() {
                 <div className="space-y-4">
                   <button
                     onClick={analyzeResume}
-                    disabled={isAnalyzing || !resumeText}
-                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-2xl hover:shadow-lg transition disabled:opacity-50"
+                    disabled={isAnalyzing || (!resumeText && !uploadedFile)}
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-2xl hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isAnalyzing ? (
                       <>
                         <Loader2 className="w-5 h-5 inline mr-2 animate-spin" />
-                        Analyzing Resume...
+                        Analyzing with Gemini AI...
                       </>
                     ) : (
                       <>
@@ -239,19 +256,11 @@ export default function ResumeChecker() {
                     </div>
                     
                     <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-4">
-                      <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                        Grammar & Style
-                      </h4>
-                      <p className="text-sm text-gray-300">Check for grammar errors and style improvements</p>
-                    </div>
-                    
-                    <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-4">
-                      <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
-                        <Target className="w-4 h-4 text-purple-400" />
-                        Job Match Score
-                      </h4>
-                      <p className="text-sm text-gray-300">Compare your resume against job requirements</p>
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                            <Target className="w-4 h-4 text-purple-400" />
+                            Match Score
+                        </h4>
+                        <p className="text-sm text-gray-300">Get a score based on real Gemini AI analysis</p>
                     </div>
                   </div>
                 </div>
@@ -260,7 +269,7 @@ export default function ResumeChecker() {
           )}
 
           {activeTab === 'results' && (
-            <div className="space-y-8">
+            <div className="space-y-8 animate-in fade-in duration-500">
               {/* Score Overview */}
               <div className="grid md:grid-cols-4 gap-6">
                 <div className={`${scoreBgColor(analysisResults.atsScore)} border rounded-2xl p-6 text-center`}>
@@ -282,7 +291,9 @@ export default function ResumeChecker() {
                   <div className="text-sm text-gray-300">Keyword Match</div>
                 </div>
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-                  <div className="text-3xl font-bold text-purple-400 mb-2">A+</div>
+                  <div className="text-3xl font-bold text-purple-400 mb-2">
+                    {analysisResults.atsScore >= 90 ? 'A+' : analysisResults.atsScore >= 80 ? 'A' : analysisResults.atsScore >= 70 ? 'B' : 'C'}
+                  </div>
                   <div className="text-sm text-gray-300">Overall Grade</div>
                 </div>
               </div>
@@ -296,12 +307,16 @@ export default function ResumeChecker() {
                     Strengths
                   </h3>
                   <div className="space-y-3">
-                    {analysisResults.strengths.map((strength, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
-                        <span className="text-gray-300 text-sm">{strength}</span>
-                      </div>
-                    ))}
+                    {analysisResults.strengths.length > 0 ? (
+                        analysisResults.strengths.map((strength, index) => (
+                        <div key={index} className="flex items-start gap-3">
+                            <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                            <span className="text-gray-300 text-sm">{strength}</span>
+                        </div>
+                        ))
+                    ) : (
+                        <p className="text-gray-500 italic">No specific strengths detected.</p>
+                    )}
                   </div>
                 </div>
 
@@ -312,12 +327,16 @@ export default function ResumeChecker() {
                     Improvements
                   </h3>
                   <div className="space-y-3">
-                    {analysisResults.improvements.map((improvement, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <TrendingUp className="w-4 h-4 text-blue-400 mt-1 flex-shrink-0" />
-                        <span className="text-gray-300 text-sm">{improvement}</span>
-                      </div>
-                    ))}
+                     {analysisResults.improvements.length > 0 ? (
+                        analysisResults.improvements.map((improvement, index) => (
+                        <div key={index} className="flex items-start gap-3">
+                            <TrendingUp className="w-4 h-4 text-blue-400 mt-1 flex-shrink-0" />
+                            <span className="text-gray-300 text-sm">{improvement}</span>
+                        </div>
+                        ))
+                     ) : (
+                        <p className="text-gray-500 italic">No specific improvements needed.</p>
+                     )}
                   </div>
                 </div>
               </div>
@@ -329,27 +348,33 @@ export default function ResumeChecker() {
                   AI Suggestions
                 </h3>
                 <div className="space-y-3">
-                  {analysisResults.suggestions.map((suggestion, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <Sparkles className="w-4 h-4 text-purple-400 mt-1 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">{suggestion}</span>
-                    </div>
-                  ))}
+                  {analysisResults.suggestions.length > 0 ? (
+                    analysisResults.suggestions.map((suggestion, index) => (
+                        <div key={index} className="flex items-start gap-3">
+                        <Sparkles className="w-4 h-4 text-purple-400 mt-1 flex-shrink-0" />
+                        <span className="text-gray-300 text-sm">{suggestion}</span>
+                        </div>
+                    ))
+                  ) : (
+                     <p className="text-gray-500 italic">No suggestions available.</p>
+                  )}
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-2xl hover:shadow-lg transition">
-                  <Download className="w-5 h-5 inline mr-2" />
-                  Download Report
-                </button>
+                 <button 
+                    onClick={() => setActiveTab('upload')}
+                    className="bg-white/10 backdrop-blur-lg text-white px-8 py-4 rounded-2xl border border-white/20 hover:bg-white/20 transition text-center"
+                 >
+                    Check Another Resume
+                 </button>
                 <Link 
                   href="/resume-builder/create"
-                  className="bg-white/10 backdrop-blur-lg text-white px-8 py-4 rounded-2xl border border-white/20 hover:bg-white/20 transition text-center"
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-2xl hover:shadow-lg transition text-center"
                 >
                   <Eye className="w-5 h-5 inline mr-2" />
-                  Edit Resume
+                  Edit with AI Builder
                 </Link>
               </div>
             </div>
@@ -368,23 +393,15 @@ export default function ResumeChecker() {
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
                       <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">Use standard section headings (Experience, Education, Skills)</span>
+                      <span className="text-gray-300 text-sm">Use standard section headings</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">Include relevant keywords from job descriptions</span>
+                      <span className="text-gray-300 text-sm">Include relevant keywords</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
                       <span className="text-gray-300 text-sm">Use simple, clean formatting</span>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">Save as PDF or Word document</span>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">Use bullet points for achievements</span>
                     </div>
                   </div>
                 </div>
@@ -394,37 +411,18 @@ export default function ResumeChecker() {
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="w-4 h-4 text-red-400 mt-1 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">Use images, graphics, or complex layouts</span>
+                      <span className="text-gray-300 text-sm">Use images or graphics</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="w-4 h-4 text-red-400 mt-1 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">Include headers, footers, or text boxes</span>
+                      <span className="text-gray-300 text-sm">Include headers/footers</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="w-4 h-4 text-red-400 mt-1 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">Use unusual fonts or colors</span>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="w-4 h-4 text-red-400 mt-1 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">Save as image files (JPG, PNG)</span>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="w-4 h-4 text-red-400 mt-1 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">Use tables or columns</span>
+                      <span className="text-gray-300 text-sm">Use unusual fonts</span>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl p-8 text-center">
-                <h3 className="text-2xl font-bold text-white mb-4">Ready to Optimize Your Resume?</h3>
-                <p className="text-purple-100 mb-6">Use our AI-powered tools to create an ATS-friendly resume</p>
-                <Link 
-                  href="/resume-builder/create"
-                  className="bg-white text-purple-600 px-8 py-4 rounded-2xl text-lg font-semibold hover:shadow-2xl hover:scale-105 transition transform inline-block"
-                >
-                  Start Building
-                </Link>
               </div>
             </div>
           )}

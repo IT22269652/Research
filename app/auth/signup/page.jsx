@@ -76,20 +76,16 @@ export default function SignUp() {
     return age >= 16;
   };
 
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const validateSriLankanPhone = (phone) => {
     const phoneRegex = /^(?:\+94|0)(?:7[0-9]|[1-9][0-9])\d{7}$/;
     return phoneRegex.test(phone.replace(/\s/g, ""));
   };
 
-  const validatePassword = (password) => {
-    return password.length >= 8;
-  };
+  const validatePassword = (password) => password.length >= 8;
 
+  // --- HANDLERS ---
   const handleApplicantChange = (e) => {
     const { name, value } = e.target;
     setApplicantForm((prev) => ({ ...prev, [name]: value }));
@@ -300,10 +296,8 @@ export default function SignUp() {
         )}
       </nav>
 
-      {/* Main Content */}
       <main className="pt-24 pb-12 px-4">
         <div className="max-w-2xl mx-auto">
-          {/* Role Selection */}
           {step === "role" && (
             <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 sm:p-12">
               <div className="text-center mb-10">
@@ -319,12 +313,10 @@ export default function SignUp() {
               </div>
 
               <div className="grid sm:grid-cols-2 gap-6">
-                {/* Applicant Button */}
                 <button
                   onClick={() => setStep("applicant")}
                   className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 p-8 hover:from-purple-500/30 hover:to-pink-500/30 transition-all duration-300"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                   <div className="relative z-10">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4">
                       <User className="w-8 h-8 text-white" />
@@ -338,12 +330,10 @@ export default function SignUp() {
                   </div>
                 </button>
 
-                {/* Company Button */}
                 <button
                   onClick={() => setStep("company")}
                   className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 p-8 hover:from-cyan-500/30 hover:to-blue-500/30 transition-all duration-300"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-500 opacity-0 group-hover:opacity-10 transition-opacity" />
                   <div className="relative z-10">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center mx-auto mb-4">
                       <Building2 className="w-8 h-8 text-white" />
@@ -360,7 +350,6 @@ export default function SignUp() {
             </div>
           )}
 
-          {/* Applicant Sign Up Form */}
           {step === "applicant" && (
             <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 sm:p-12">
               <div className="flex items-center justify-between mb-8">
@@ -368,25 +357,19 @@ export default function SignUp() {
                   onClick={handleGoBack}
                   className="inline-flex items-center gap-2 text-purple-300 hover:text-purple-200 transition"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="w-4 h-4" />{" "}
                   <span className="text-sm">Go Back</span>
                 </button>
                 <div className="flex items-center gap-2 text-purple-300">
-                  <User className="w-5 h-5" />
+                  <User className="w-5 h-5" />{" "}
                   <span className="text-sm font-medium">Applicant</span>
                 </div>
               </div>
 
               <div className="text-center mb-8">
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-                  Create Your{" "}
-                  <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    Account
-                  </span>
+                  Create Your Account
                 </h2>
-                <p className="text-gray-300 text-sm">
-                  Fill in your details to get started
-                </p>
               </div>
 
               <div className="space-y-5">
@@ -405,7 +388,6 @@ export default function SignUp() {
                     />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Name with Initials</label>
                   <div className="relative">
@@ -421,7 +403,6 @@ export default function SignUp() {
                     />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Birthday</label>
                   <div className="relative">
@@ -439,7 +420,6 @@ export default function SignUp() {
                   </div>
                   {errors.birthday && <p className="text-red-400 text-xs mt-1">{errors.birthday}</p>}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Gender</label>
                   <select
@@ -455,7 +435,6 @@ export default function SignUp() {
                     <option value="other" className="text-black">Other</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Contact Number</label>
                   <div className="relative">
@@ -474,7 +453,6 @@ export default function SignUp() {
                   </div>
                   {errors.contactNumber && <p className="text-red-400 text-xs mt-1">{errors.contactNumber}</p>}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Email Address</label>
                   <div className="relative">
@@ -493,44 +471,36 @@ export default function SignUp() {
                   </div>
                   {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Create Password</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type={showPassword ? "text" : "password"}
                       name="password"
                       value={applicantForm.password}
                       onChange={handleApplicantChange}
-                      placeholder="••••••••"
-                      required
                       className={`w-full rounded-2xl bg-slate-900/60 border ${
                         errors.password ? "border-red-500" : "border-white/10"
-                      } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
+                      } px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
                   {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Confirm Password</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       name="confirmPassword"
                       value={applicantForm.confirmPassword}
                       onChange={handleApplicantChange}
-                      placeholder="••••••••"
-                      required
                       className={`w-full rounded-2xl bg-slate-900/60 border ${
                         errors.confirmPassword ? "border-red-500" : "border-white/10"
                       } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60`}
@@ -558,7 +528,6 @@ export default function SignUp() {
             </div>
           )}
 
-          {/* Company Sign Up Form */}
           {step === "company" && (
             <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 sm:p-12">
               <div className="flex items-center justify-between mb-8">
@@ -566,25 +535,19 @@ export default function SignUp() {
                   onClick={handleGoBack}
                   className="inline-flex items-center gap-2 text-cyan-300 hover:text-cyan-200 transition"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="w-4 h-4" />{" "}
                   <span className="text-sm">Go Back</span>
                 </button>
                 <div className="flex items-center gap-2 text-cyan-300">
-                  <Building2 className="w-5 h-5" />
+                  <Building2 className="w-5 h-5" />{" "}
                   <span className="text-sm font-medium">Company</span>
                 </div>
               </div>
 
               <div className="text-center mb-8">
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-                  Register Your{" "}
-                  <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                    Company
-                  </span>
+                  Register Your Company
                 </h2>
-                <p className="text-gray-300 text-sm">
-                  Fill in your company details
-                </p>
               </div>
 
               <div className="space-y-5">
@@ -603,7 +566,6 @@ export default function SignUp() {
                     />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Industry</label>
                   <div className="relative">
@@ -622,7 +584,6 @@ export default function SignUp() {
                     </select>
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Business Registration Number</label>
                   <div className="relative">
@@ -638,7 +599,6 @@ export default function SignUp() {
                     />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Branch Location</label>
                   <div className="relative">
@@ -659,7 +619,6 @@ export default function SignUp() {
                     </select>
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Email Address</label>
                   <div className="relative">
@@ -678,7 +637,6 @@ export default function SignUp() {
                   </div>
                   {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Contact Number</label>
                   <div className="relative">
@@ -697,44 +655,36 @@ export default function SignUp() {
                   </div>
                   {errors.contactNumber && <p className="text-red-400 text-xs mt-1">{errors.contactNumber}</p>}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Create Password</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type={showPassword ? "text" : "password"}
                       name="password"
                       value={companyForm.password}
                       onChange={handleCompanyChange}
-                      placeholder="••••••••"
-                      required
                       className={`w-full rounded-2xl bg-slate-900/60 border ${
                         errors.password ? "border-red-500" : "border-white/10"
-                      } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
+                      } px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
                   {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">Confirm Password</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       name="confirmPassword"
                       value={companyForm.confirmPassword}
                       onChange={handleCompanyChange}
-                      placeholder="••••••••"
-                      required
                       className={`w-full rounded-2xl bg-slate-900/60 border ${
                         errors.confirmPassword ? "border-red-500" : "border-white/10"
                       } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60`}
@@ -763,123 +713,6 @@ export default function SignUp() {
           )}
         </div>
       </main>
-
-      {/* Footer - Same as About Us */}
-      <footer className="bg-slate-900/50 border-t border-white/10 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Brain className="w-6 h-6 text-purple-400" />
-                <span className="text-lg font-bold text-white">
-                  AI Career Guide
-                </span>
-              </div>
-              <p className="text-gray-400 text-sm">
-                Empowering careers with AI technology tailored for the Sri
-                Lankan job market.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="text-white font-semibold mb-4">Features</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li>
-                  <a
-                    href="/resume-builder"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Resume Builder
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/interview-practice"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Interview Practice
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/career-guidance"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Career Guidance
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/InterviewDashboard"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Job Matching
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-white font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li>
-                  <a href="/about" className="hover:text-purple-400 transition">
-                    About Us
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Contact
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Privacy Policy
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Terms of Service
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-white font-semibold mb-4">Connect</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    LinkedIn
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Facebook
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Twitter
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Instagram
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-white/10 pt-8 text-center text-sm text-gray-400">
-            <p>
-              © 2025 AI Career Guidance System. All rights reserved. Made for
-              Sri Lankan Job Market.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

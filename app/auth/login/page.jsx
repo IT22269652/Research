@@ -25,24 +25,16 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   
   const [loginForm, setLoginForm] = useState({
-    role: "",
     email: "",
     password: "",
   });
 
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setLoginForm((prev) => ({ ...prev, [name]: value }));
-
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleSubmit = async (e) => {
@@ -189,7 +181,6 @@ export default function Login() {
         )}
       </nav>
 
-      {/* Main Content */}
       <main className="pt-24 pb-12 px-4 flex items-center justify-center min-h-screen">
         <div className="max-w-md w-full">
           <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 sm:p-12">
@@ -206,7 +197,6 @@ export default function Login() {
               </p>
             </div>
 
-            {/* Login Form */}
             <div className="space-y-5">
               
               {/* Role Selection */}
@@ -257,7 +247,6 @@ export default function Login() {
                     value={loginForm.email}
                     onChange={handleChange}
                     placeholder="you@example.com"
-                    required
                     className={`w-full rounded-2xl bg-slate-900/60 border ${
                       errors.email ? "border-red-500" : "border-white/10"
                     } pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${
@@ -268,7 +257,6 @@ export default function Login() {
                 {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
               </div>
 
-              {/* Password */}
               <div>
                 <label className="block text-sm text-gray-300 mb-2">Password</label>
                 <div className="relative">
@@ -279,7 +267,6 @@ export default function Login() {
                     value={loginForm.password}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    required
                     className={`w-full rounded-2xl bg-slate-900/60 border ${
                       errors.password ? "border-red-500" : "border-white/10"
                     } pl-12 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${
@@ -289,7 +276,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -297,21 +284,6 @@ export default function Login() {
                 {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
               </div>
 
-              {/* Forgot Password Link */}
-              <div className="text-right">
-                <a
-                  href="#"
-                  className={`text-sm transition ${
-                    loginForm.role === "company"
-                      ? "text-cyan-400 hover:text-cyan-300"
-                      : "text-purple-400 hover:text-purple-300"
-                  }`}
-                >
-                  Forgot Password?
-                </a>
-              </div>
-
-              {/* Submit Button */}
               <button
                 onClick={handleSubmit}
                 disabled={isLoading}
@@ -325,16 +297,11 @@ export default function Login() {
                 {isLoading ? "Logging in..." : "Login"}
               </button>
 
-              {/* Sign Up Link */}
               <div className="text-center text-sm text-gray-400">
                 Don't have an account?{" "}
                 <a
                   href="/auth/signup"
-                  className={`font-semibold transition ${
-                    loginForm.role === "company"
-                      ? "text-cyan-400 hover:text-cyan-300"
-                      : "text-purple-400 hover:text-purple-300"
-                  }`}
+                  className="text-purple-400 hover:text-purple-300 font-semibold transition"
                 >
                   Sign Up
                 </a>
