@@ -23,60 +23,42 @@ export default function ResumeChecker() {
     improvements: []
   });
 
-  // --- Real API Integration ---
-  const analyzeResume = async () => {
-    if (!uploadedFile && !resumeText) {
-        alert("Please upload a resume or paste text first.");
-        return;
+const analyzeResume = async () => {
+  if (isAnalyzing) return;
+  setIsAnalyzing(true);
+
+  try {
+    const formData = new FormData();
+    if (uploadedFile) formData.append("file", uploadedFile);
+    if (resumeText) formData.append("resumeText", resumeText);
+    if (jobDescription) formData.append("jobDescription", jobDescription);
+
+    const response = await fetch("/api/check-resume", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("API ERROR:", text);
+      throw new Error("Resume analysis failed");
     }
 
-    setIsAnalyzing(true);
+    const data = await response.json();
     
-    try {
-      const formData = new FormData();
-      
-      // Handle File vs Text
-      if (uploadedFile) {
-        formData.append("file", uploadedFile);
-      } else {
-        formData.append("resumeText", resumeText);
-      }
-      
-      formData.append("jobDescription", jobDescription);
+    // FIX: Match the state setter name defined at the top of your component
+    setAnalysisResults(data); 
+    
+    // UX: Switch to results tab so the user sees the output immediately
+    setActiveTab('results');
 
-      // Call our Backend API
-      const response = await fetch('/api/check-resume', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Analysis failed');
-      }
-
-      const data = await response.json();
-
-      // Update UI with real data
-      setAnalysisResults({
-        atsScore: data.atsScore || 0,
-        grammarScore: data.grammarScore || 0,
-        keywordMatch: data.keywordMatch || 0,
-        suggestions: data.suggestions || [],
-        strengths: data.strengths || [],
-        improvements: data.improvements || []
-      });
-
-      setActiveTab('results');
-
-    } catch (error) {
-      console.error("Error analyzing:", error);
-      // Backend එකෙන් එන හරියම Error message එක user ට පෙන්වන්න
-      alert(error.message || "Something went wrong with the analysis.");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];

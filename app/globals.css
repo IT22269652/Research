@@ -486,3 +486,75 @@
     color-adjust: exact;
     -webkit-print-color-adjust: exact;
 }
+
+/* A4 export helper - set a predictable width for HTML->PDF conversions */
+/* 210mm @ 96dpi ≈ 794px */
+#a4-resume {
+  width: 794px; /* fixed export width for consistent PDF sizing */
+  min-height: 1123px; /* 297mm at 96dpi */
+  padding: 20mm; /* comfortable page margins when rendered to A4 */
+  margin: 0 auto;
+  box-sizing: border-box;
+  background: #fff !important;
+  color: #000 !important;
+  font-family: Arial, sans-serif !important;
+}
+
+/* Ensure the resume content fills the A4 container and scales well */
+#resume-pdf-content {
+  width: 100%;
+  max-width: 794px;
+  margin: 0 auto;
+  padding: 0;
+  box-sizing: border-box;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #000;
+  background: #fff;
+}
+
+#resume-pdf-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Keep items from splitting across pages */
+.cv-item-no-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 12px;
+    display: block;
+}
+
+/* Try to keep entire sections together */
+.cv-section {
+    page-break-inside: auto;
+    margin-top: 20px;
+}
+
+.cv-section-title {
+    page-break-after: avoid !important; /* avoid leaving the title alone at bottom */
+    break-after: avoid !important;
+}
+
+/* Small print-specific tweaks */
+@media print {
+  body * { visibility: visible; }
+  #resume-pdf-content { color: #000; background: #fff; }
+  .cv-item-no-break { page-break-inside: avoid !important; }
+}
+
+/* keep link styling simple for PDF */
+#resume-pdf-content a { text-decoration: none; color: #0b61d6; }
+
+/* Safety: force white background for cloned/html2canvas container */
+.html2canvas-container { background: #fff !important; }
+
+/* --- Header / Photo - restored original (larger) layout --- */
+#resume-pdf-content .cv-header { padding-top: 12mm !important; margin-top: 0 !important; }
+#resume-pdf-content .cv-header img { width: 160px !important; height: 160px !important; margin-bottom: 12px !important; border-width: 4px !important; }
+#resume-pdf-content .cv-header .profile-photo { width: 160px !important; height: 160px !important; }
+#resume-pdf-content .cv-name { margin-bottom: 12px !important; font-size: 40px !important; text-align: center; }
+#resume-pdf-content .cv-contact { margin-top: 10px !important; gap: 1rem !important; }
+

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Menu,
   X,
@@ -16,10 +16,22 @@ import {
   Zap,
   LogIn,
   UserPlus,
+  User, // Import User icon for the circle
 } from "lucide-react";
 
 function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // *** NEW: State to track login status ***
+  const [user, setUser] = useState(null);
+
+  // *** NEW: Check for login token on load ***
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
+    if (token && storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
   const components = [
     {
@@ -55,7 +67,12 @@ function Home() {
       icon: TrendingUp,
       color: "from-green-500 to-emerald-500",
       link: "/career-learning-guidance/cv-section",
-      features: ["Skill Gap Analysis", "Career Paths", "Course Recommendations", "Market Trends"]
+      features: [
+        "Skill Gap Analysis",
+        "Career Paths",
+        "Course Recommendations",
+        "Market Trends",
+      ],
     },
     {
       id: 4,
@@ -65,8 +82,13 @@ function Home() {
       icon: Briefcase,
       color: "from-orange-500 to-red-500",
       link: "/InterviewHome",
-      features: ["Voice Interview", "HR & Technical Q&A", "Custom Questions", "Mock Interviews"]
-    }
+      features: [
+        "Voice Interview",
+        "HR & Technical Q&A",
+        "Custom Questions",
+        "Mock Interviews",
+      ],
+    },
   ];
 
   const stats = [
@@ -109,22 +131,40 @@ function Home() {
               >
                 About
               </a>
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => (window.location.href = "/auth/login")}
-                  className="flex items-center space-x-2 text-gray-300 hover:text-purple-400 transition"
+
+              {/* *** NEW: Conditional Rendering for User Profile Circle *** */}
+              {user ? (
+                <div
+                  onClick={() => (window.location.href = "/profile")}
+                  className="flex items-center gap-3 cursor-pointer group"
                 >
-                  <LogIn className="w-4 h-4" />
-                  <span>Login</span>
-                </button>
-                <button
-                  onClick={() => (window.location.href = "/auth/signup")}
-                  className="flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-purple-500/50 transition"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Sign Up</span>
-                </button>
-              </div>
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-lg group-hover:ring-2 ring-purple-400 transition">
+                    {/* Show first letter of name, or 'U' if undefined */}
+                    {user.name ? (
+                      user.name.charAt(0).toUpperCase()
+                    ) : (
+                      <User className="w-5 h-5" />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => (window.location.href = "/auth/login")}
+                    className="flex items-center space-x-2 text-gray-300 hover:text-purple-400 transition"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>Login</span>
+                  </button>
+                  <button
+                    onClick={() => (window.location.href = "/auth/signup")}
+                    className="flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-purple-500/50 transition"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>Sign Up</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -163,20 +203,34 @@ function Home() {
               >
                 About
               </a>
-              <button
-                onClick={() => (window.location.href = "/auth/login")}
-                className="w-full flex items-center justify-center space-x-2 text-gray-300 hover:text-purple-400 py-2 border border-gray-600 rounded-full mt-2"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Login</span>
-              </button>
-              <button
-                onClick={() => (window.location.href = "/auth/signup")}
-                className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-full"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>Sign Up</span>
-              </button>
+
+              {/* *** NEW: Mobile Conditional Rendering *** */}
+              {user ? (
+                <button
+                  onClick={() => (window.location.href = "/profile")}
+                  className="w-full flex items-center justify-center space-x-2 bg-purple-600 text-white py-2 rounded-full mt-2"
+                >
+                  <User className="w-4 h-4" />
+                  <span>My Profile ({user.name})</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => (window.location.href = "/auth/login")}
+                    className="w-full flex items-center justify-center space-x-2 text-gray-300 hover:text-purple-400 py-2 border border-gray-600 rounded-full mt-2"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>Login</span>
+                  </button>
+                  <button
+                    onClick={() => (window.location.href = "/auth/signup")}
+                    className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-full"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>Sign Up</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -195,8 +249,7 @@ function Home() {
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
-            Transform Your Career Journey
-            <br />
+            Transform Your Career Journey <br />
             <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
               with AI Intelligence
             </span>
@@ -209,11 +262,16 @@ function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
+            {/* CTA buttons check if user is logged in to decide destination */}
             <button
-              onClick={() => (window.location.href = "/auth/signup")}
+              onClick={() =>
+                (window.location.href = user
+                  ? "/Ai-Applicant-Filter"
+                  : "/auth/signup")
+              }
               className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-purple-500/50 transition transform hover:scale-105"
             >
-              Start Your Journey
+              {user ? "Go to Dashboard" : "Start Your Journey"}
             </button>
             <button className="bg-white/10 backdrop-blur-lg text-white px-8 py-4 rounded-full text-lg font-semibold border border-white/20 hover:bg-white/20 transition">
               Watch Demo
@@ -262,13 +320,10 @@ function Home() {
                 >
                   <component.icon className="w-8 h-8 text-white" />
                 </div>
-
                 <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-purple-400 transition">
                   {component.title}
                 </h3>
-
                 <p className="text-gray-400 mb-6">{component.description}</p>
-
                 <div className="space-y-2 mb-6">
                   {component.features.map((feature, idx) => (
                     <div key={idx} className="flex items-center space-x-2">
@@ -279,10 +334,8 @@ function Home() {
                     </div>
                   ))}
                 </div>
-
                 <div className="flex items-center text-purple-400 font-semibold group-hover:translate-x-2 transition-transform">
-                  Explore Now
-                  <ChevronRight className="w-5 h-5 ml-1" />
+                  Explore Now <ChevronRight className="w-5 h-5 ml-1" />
                 </div>
               </div>
             ))}
@@ -325,7 +378,7 @@ function Home() {
                 Lankan job market.
               </p>
             </div>
-
+            {/* ... (Footer Links remain the same) ... */}
             <div>
               <h4 className="text-white font-semibold mb-4">Features</h4>
               <ul className="space-y-2 text-sm text-gray-400">
@@ -345,25 +398,8 @@ function Home() {
                     Interview Practice
                   </a>
                 </li>
-                <li>
-                  <a
-                    href="/career-guidance"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Career Guidance
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/InterviewDashboard"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Job Matching
-                  </a>
-                </li>
               </ul>
             </div>
-
             <div>
               <h4 className="text-white font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-sm text-gray-400">
@@ -373,30 +409,12 @@ function Home() {
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/contact"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Contact
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/privacy-policy"
-                    className="hover:text-purple-400 transition"
-                  >
-                    Privacy Policy
-                  </a>
-                </li>
-
-                <li>
                   <a href="#" className="hover:text-purple-400 transition">
-                    Terms of Service
+                    Contact
                   </a>
                 </li>
               </ul>
             </div>
-
             <div>
               <h4 className="text-white font-semibold mb-4">Connect</h4>
               <ul className="space-y-2 text-sm text-gray-400">
@@ -405,25 +423,9 @@ function Home() {
                     LinkedIn
                   </a>
                 </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Facebook
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Twitter
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition">
-                    Instagram
-                  </a>
-                </li>
               </ul>
             </div>
           </div>
-
           <div className="border-t border-white/10 pt-8 text-center text-sm text-gray-400">
             <p>
               © 2025 AI Career Guidance System. All rights reserved. Made for
