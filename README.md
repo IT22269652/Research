@@ -110,7 +110,7 @@ MongoDB (Data Persistence)
 * User selects skill (e.g., **Java**)
 * LLM generates quiz questions
 * Frontend validates answers instantly (Green/Red)
-* AI ensures strict JSON formatting
+* Also provides explanation about question and answer(if user wants)
 
 🎙️ Scenario 2: Confidence Check (Voice Analysis)
 
