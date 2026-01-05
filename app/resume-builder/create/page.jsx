@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Download, Eye, Plus, X, Sparkles, Loader2, User, Mail, Phone, MapPin, Briefcase, GraduationCap, Code, Award, Github, ExternalLink, FileText } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Save, Download, Eye, Plus, X, Sparkles, Loader2, User, Mail, Phone, MapPin, Briefcase, GraduationCap, Code, Award, Github, ExternalLink, FileText, Users, Wand2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { Toaster } from 'react-hot-toast';
 
@@ -11,10 +12,15 @@ import { jsPDF } from 'jspdf';
 
 
 export default function ResumeBuilderCreate() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('form');
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('modern');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isInlineEdit, setIsInlineEdit] = useState(false);
+  const fileInputRef = useRef(null);
+  const photoInputRef = useRef(null);
   
   const [formData, setFormData] = useState({
     personalInfo: {
@@ -24,14 +30,17 @@ export default function ResumeBuilderCreate() {
       address: '',
       linkedin: '',
       github: '',
-      website: ''
+      website: '',
+      photo: '' // base64 or URL
     },
     summary: '',
+    technicalSkills: [],
     skills: '',
     experience: [],
     education: [],
     projects: [],
-    certifications: []
+    certifications: [],
+    references: []
   });
 
   const [currentEntry, setCurrentEntry] = useState({
@@ -57,55 +66,137 @@ const downloadPDF = async () => {
     const element = document.getElementById('resume-pdf-content');
     if (!element) return toast.error('Preview not ready!');
 
-    const html2canvas = (await import('html2canvas-pro')).default;
+    // import jsPDF dynamically (already installed)
     const { jsPDF } = await import('jspdf');
-
-    // Capture full content with high quality
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      allowTaint: true,
-      width: element.scrollWidth,
-      height: element.scrollHeight,
-    });
-
-    const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
+    const margin = 15; // mm
 
-    const pdfWidth = pdf.internal.pageSize.getWidth();   // 210mm
-    const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+    // helper: convert mm to px at 96dpi (approx)
+    const mmToPx = (mm) => mm * 3.779527559;
 
-    const imgWidth = canvas.width / 2;   // scale 2 නිසා
-    const imgHeight = canvas.height / 2;
+    const pdfWidthMm = pdf.internal.pageSize.getWidth();
+    const availableWidthMm = pdfWidthMm - 2 * margin;
+    const targetWidthPx = Math.round(mmToPx(availableWidthMm));
 
-    const ratio = pdfWidth / imgWidth;
-    const scaledHeight = imgHeight * ratio;
+    // Try text-based rendering using jsPDF.html for selectable text
+    try {
+      await pdf.html(element, {
+        x: margin,
+        y: margin,
+        windowWidth: targetWidthPx,
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          allowTaint: true,
+          width: targetWidthPx,
+          onclone: (clonedDoc) => {
+            const clonedElement = clonedDoc.getElementById('resume-pdf-content');
+            if (clonedElement) {
+              clonedElement.style.width = `${targetWidthPx}px`;
+              clonedElement.style.boxSizing = 'border-box';
+              clonedElement.classList.add('html2canvas-container');
+            }
+          }
+        },
+        callback: (doc) => {
+          const filename = `${formData.personalInfo.fullName || 'My_Resume'}_A4_Text.pdf`;
+          doc.save(filename);
+          toast.success('Text-based PDF downloaded — selectable & print-ready!');
+        },
+        autoPaging: 'text'
+      });
 
-    let positionY = 0;
+      setIsGenerating(false);
+      return;
 
-    // Multi-page support (content එක වැඩි නම්)
-    while (positionY < scaledHeight) {
-      if (positionY > 0) pdf.addPage();
+    } catch (err) {
+      console.warn('Text-based PDF failed, falling back to image render:', err);
 
-      pdf.addImage(
-        imgData,
-        'PNG',
-        0,                    // x
-        -positionY,           // y (negative to scroll down)
-        pdfWidth,             // width
-        scaledHeight          // full height
-      );
+      // Fallback to image-based rendering (reliable visual fidelity)
+      try {
+        const html2canvas = (await import('html2canvas-pro')).default;
 
-      positionY += pdfHeight;
+        // create a temporary clone with fixed width so canvas has correct dimensions
+        const cloned = element.cloneNode(true);
+        cloned.style.width = `${targetWidthPx}px`;
+        cloned.style.boxSizing = 'border-box';
+        cloned.classList.add('html2canvas-container');
+
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.top = '-9999px';
+        wrapper.style.left = '-9999px';
+        wrapper.appendChild(cloned);
+        document.body.appendChild(wrapper);
+
+        const canvas = await html2canvas(cloned, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          allowTaint: true,
+          width: targetWidthPx
+        });
+
+        document.body.removeChild(wrapper);
+
+        const imgData = canvas.toDataURL('image/png');
+
+        const pdfWidth = pdf.internal.pageSize.getWidth(); // mm
+        const pdfHeight = pdf.internal.pageSize.getHeight(); // mm
+
+        // convert canvas px to mm
+        const pxToMm = (px) => px / 3.779527559;
+        const imgWidthMm = pxToMm(canvas.width);
+        const imgHeightMm = pxToMm(canvas.height);
+
+        const availableWidthMm2 = pdfWidth - 2 * margin;
+        const availableHeightMm = pdfHeight - 2 * margin;
+
+        // scale to fit width
+        const scale = Math.min(availableWidthMm2 / imgWidthMm, 1);
+        const finalWidthMm = imgWidthMm * scale;
+        const finalHeightMm = imgHeightMm * scale;
+
+        // If height fits in one page just add and finish
+        if (finalHeightMm <= availableHeightMm) {
+          pdf.addImage(imgData, 'PNG', margin, margin, finalWidthMm, finalHeightMm);
+        } else {
+          // For multi-page, draw the full image and let previous approach shift using y offset
+          // (this provides a reasonably reliable multi-page fallback)
+          let positionYmm = 0;
+          let pageCount = 0;
+          while (positionYmm < finalHeightMm) {
+            if (pageCount > 0) pdf.addPage();
+
+            // Use negative y offset using image height (works across many browsers)
+            pdf.addImage(
+              imgData,
+              'PNG',
+              margin,
+              margin - (positionYmm),
+              finalWidthMm,
+              finalHeightMm
+            );
+
+            positionYmm += availableHeightMm;
+            pageCount++;
+          }
+        }
+
+        pdf.save(`${formData.personalInfo.fullName || 'My_Resume'}_A4.pdf`);
+        toast.success('PDF downloaded — image fallback used.');
+
+      } catch (err2) {
+        console.error('Fallback PDF failed', err2);
+        toast.error('PDF generation failed');
+      }
     }
 
-    pdf.save(`${formData.personalInfo.fullName || 'My_Resume'}_A4.pdf`);
-    toast.success('PDF downloaded — Perfect A4 size!');
-
   } catch (err) {
-    console.error(err);
+    console.error('PDF generation error:', err);
     toast.error('Failed to generate PDF');
   } finally {
     setIsGenerating(false);
@@ -120,6 +211,11 @@ const downloadPDF = async () => {
         [field]: value
       }
     }));
+  };
+
+  // Helper to handle simple text updates
+  const handleTextChange = (field, value) => {
+     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   // Topic descriptions mapping
@@ -239,10 +335,12 @@ useEffect(() => {
     },
     summary: "",
     skills: "",
+    technicalSkills: "",
     experience: [],
     education: [],
     projects: [],
-    certifications: []
+    certifications: [],
+    references: []
   });
 
   setSelectedTemplate("modern");
@@ -382,17 +480,112 @@ useEffect(() => {
     }));
   };
 
+  // Photo upload handler (stores base64 data URL in personalInfo.photo)
+  const MAX_PHOTO_SIZE = 2 * 1024 * 1024; // 2 MB
+  const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+  const validateImageFile = (file) => {
+    if (!file) return { ok: false, reason: 'No file' };
+    if (!ALLOWED_PHOTO_TYPES.includes(file.type)) return { ok: false, reason: 'TYPE' };
+    if (file.size > MAX_PHOTO_SIZE) return { ok: false, reason: 'SIZE' };
+    return { ok: true };
+  };
+
+  // Handlers for preview edit toolbar
+  const handlePreviewPhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateImageFile(file);
+    if (!validation.ok) {
+      if (validation.reason === 'TYPE') {
+        toast.error('Unsupported image type. Allowed: JPG, PNG, WebP');
+      } else if (validation.reason === 'SIZE') {
+        toast.error('Image too large. Max 2 MB');
+      } else {
+        toast.error('Invalid image');
+      }
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      setFormData(prev => ({ ...prev, personalInfo: { ...prev.personalInfo, photo: dataUrl } }));
+      toast.success('Profile photo updated');
+    };
+    reader.onerror = (err) => {
+      console.error('Photo read error', err);
+      toast.error('Failed to read image file');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handlePersonalInfoChange = (field, value) => {
+    handleInputChange('personalInfo', field, value);
+  };
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateImageFile(file);
+    if (!validation.ok) {
+      if (validation.reason === 'TYPE') {
+        toast.error('Invalid image type. Please upload JPG, PNG, or WebP.');
+      } else if (validation.reason === 'SIZE') {
+        toast.error('Image is too large. Max size is 2 MB.');
+      }
+      // reset input
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      setFormData(prev => ({
+        ...prev,
+        personalInfo: { ...prev.personalInfo, photo: dataUrl }
+      }));
+      toast.success('Profile photo uploaded');
+    };
+    reader.onerror = (err) => {
+      console.error('Photo read error', err);
+      toast.error('Failed to read image file');
+    };
+    reader.readAsDataURL(file);
+    // reset input
+    e.target.value = '';
+  };
+
  const addEntry = () => {
   // Edit mode: currentEntry.index is set
   if (currentEntry.index !== undefined) {
     setFormData(prev => {
       const updated = [...prev[currentEntry.type]];
       updated[currentEntry.index] = {
-        ...currentEntry,
-        index: undefined
+        ...currentEntry
       };
       return { ...prev, [currentEntry.type]: updated };
     });
+
+    setCurrentEntry({
+      type: currentEntry.type,
+      title: '',
+      company: '',
+      location: '',
+      startDate: '',
+      endDate: '',
+      current: false,
+      description: ''
+    });
+
+    setShowEntryForm(false);
+    toast.success('Updated!');
+    return;
   } else {
     // Add new entry
     setFormData(prev => ({
@@ -432,41 +625,118 @@ useEffect(() => {
     }, 2000);
   };
 
+// app/resume-builder/create/page.jsx
+const generateAiSummary = async () => {
+  if (!formData.summary?.trim()) {
+    toast.error('Please enter keywords first!');
+    return;
+  }
+
+  setIsAiLoading(true);
+  try {
+    const res = await fetch('/api/generate-summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userInput: formData.summary,
+        skills: formData.skills,
+        jobTitle: formData.experience[0]?.title || 'Professional',
+        experience: formData.experience.map(e => e.title).join(', ')
+      }),
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (jsonErr) {
+      const text = await res.text().catch(() => null);
+      console.error('AI Error: non-JSON response', text || jsonErr);
+      toast.error(text ? `AI Error: ${text.slice(0,200)}` : 'AI Error: received invalid response from server.');
+      return;
+    }
+
+    if (res.ok) {
+      setFormData(prev => ({ ...prev, summary: data.summary }));
+      toast.success('Summary generated!');
+    } else {
+      // Router error එකක් ආවොත් පරිශීලකයාට පණිවිඩයක් පෙන්වන්න
+      if (data.error && data.error.includes('router')) {
+        toast.error('AI is warming up. Please click again in 10 seconds.');
+      } else {
+        toast.error(data.error || 'Failed to generate');
+      }
+    }
+  } catch (error) {
+    console.error("AI Error:", error);
+  } finally {
+    setIsAiLoading(false);
+  }
+};
+
 const saveResume = async () => {
   if (!formData.personalInfo?.fullName?.trim()) {
     toast.error('Please enter your full name!');
     return;
   }
 
+  // Debug: check whether photo is present before sending
+  console.log('Saving resume — photo present?', Boolean(formData.personalInfo?.photo), 'len:', formData.personalInfo?.photo?.length || 0);
+  if (selectedTemplate === 'modern' && !formData.personalInfo?.photo) {
+    // Warn user and allow them to continue if they really want to
+    const proceed = confirm('You are using the Modern template but no profile photo is attached. Continue without a photo?');
+    if (!proceed) return;
+  }
+
   setIsSaving(true);
 
   try {
+    // Build body as string to inspect size
+    const bodyObj = {
+      personalInfo: formData.personalInfo,
+      summary: formData.summary,
+      skills: formData.skills,
+      experience: formData.experience,
+      education: formData.education,
+      projects: formData.projects,
+      certifications: formData.certifications,
+      selectedTemplate
+    };
+    const bodyString = JSON.stringify(bodyObj);
+    console.log('POST /api/resume body size (chars):', bodyString.length);
+
     const res = await fetch('/api/resume', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        personalInfo: formData.personalInfo,
-        summary: formData.summary,
-        skills: formData.skills,
-        experience: formData.experience,
-        education: formData.education,
-        projects: formData.projects,
-        certifications: formData.certifications,
-        selectedTemplate
-      }),
+      body: bodyString,
     });
 
     if (res.ok) {
       const saved = await res.json();
+      console.log('Saved resume (POST response):', saved);
       toast.success('Resume saved successfully!', { duration: 4000 });
 
-      window.history.replaceState(null, '', `/resume-builder/edit/${saved._id}`);
+      // Small debug toast about photo presence
+      if (saved.personalInfo?.photo) {
+        toast.success(`Saved resume contains a photo (size: ${saved.personalInfo.photo.length} chars)`, { duration: 5000 });
+      } else {
+        toast.error('Saved resume did NOT contain a photo', { duration: 5000 });
+      }
 
-      document.title = `${formData.personalInfo.fullName.trim()} - Resume Builder`;
+      // Store the saved resume in sessionStorage as a short-lived cache so the Edit page can display it immediately
+      try {
+        sessionStorage.setItem('recentlySavedResume', JSON.stringify(saved));
+      } catch (e) {
+        console.warn('Failed to write recentlySavedResume to sessionStorage', e);
+      }
+
+      // Navigate to edit page to ensure it performs a fresh fetch and displays the saved photo
+      router.push(`/resume-builder/edit/${saved._id}`);
+
     } else {
       throw new Error();
     }
   } catch (err) {
+    console.error('Save error:', err);
     toast.error('Save failed — please try again');
   } finally {
     setIsSaving(false);
@@ -547,15 +817,29 @@ const saveResume = async () => {
   };
 
   const generateProfessionalCV = () => {
-    const { personalInfo, summary, skills, experience, education, projects, certifications } = formData;
+    const { personalInfo, summary, skills, technicalSkills, experience, education, projects, certifications, references } = formData;
     
+    const ReferenceItem = ({ refData }) => (
+        <div className="cv-item">
+            <div className="cv-item-header">
+                <h3 className="cv-item-title">{refData.title}</h3> {/* Name */}
+                <span className="cv-item-company">{refData.company}</span> {/* Position/Company */}
+            </div>
+            <div className="cv-item-description">{refData.description}</div> {/* Contact Info */}
+        </div>
+    );
     switch(selectedTemplate) {
       case 'modern':
         return (
           <div className="cv-template cv-modern">
             {/* Header */}
             <div className="cv-header">
-              <h1 className="cv-name">{personalInfo.fullName || 'Your Name'}</h1>
+              {personalInfo.photo && selectedTemplate === 'modern' && (
+                <div className="mx-auto mb-2 w-40 h-40 overflow-hidden border-4 profile-photo">
+                  <img src={personalInfo.photo} alt="Profile" className="w-full h-full object-cover" />
+                </div>
+              )}
+              <h1 className="cv-name text-4xl font-bold mb-2">{personalInfo.fullName || 'Your Name'}</h1>
               <div className="cv-contact">
                 {personalInfo.email && <span>📧 {personalInfo.email}</span>}
                 {personalInfo.phone && <span>📱 {personalInfo.phone}</span>}
@@ -574,13 +858,28 @@ const saveResume = async () => {
               </div>
             )}
 
-            {/* Skills */}
-            {skills && (
-              <div className="cv-section">
-                <h2 className="cv-section-title">Skills</h2>
-                <p className="cv-skills">{skills}</p>
-              </div>
-            )}
+            {/* Skills and Technical Skills Side-by-Side */}
+{(skills || technicalSkills) && (
+  <div className="cv-section grid grid-cols-2 gap-8">
+    
+    {/* Left Side: Soft Skills */}
+    <div>
+      <h2 className="cv-section-title border-b-2 border-blue-500 mb-2">Soft Skills</h2>
+      <p className="cv-skills whitespace-pre-line text-sm">
+        {skills || "No skills added yet."}
+      </p>
+    </div>
+
+    {/* Right Side: Technical Skills */}
+    <div>
+      <h2 className="cv-section-title border-b-2 border-blue-500 mb-2">Technical Skills</h2>
+      <p className="cv-skills whitespace-pre-line text-sm">
+        {technicalSkills || "No skills added yet."}
+      </p>
+    </div>
+
+  </div>
+)}
 
             {/* Work Experience */}
             {experience.length > 0 && (
@@ -665,8 +964,20 @@ const saveResume = async () => {
                 ))}
               </div>
             )}
+
+            {/* References - Added at the end */}
+            {references.length > 0 && (
+                <div className="cv-section">
+                    <h2 className="cv-section-title">References</h2>
+                    {references.map((ref, index) => (
+                        <ReferenceItem key={index} refData={ref} />
+                    ))}
+                </div>
+            )}
+
           </div>
         );
+        
 
       case 'classic':
         return (
@@ -692,13 +1003,28 @@ const saveResume = async () => {
               </div>
             )}
 
-            {/* Skills */}
-            {skills && (
-              <div className="cv-section">
-                <h2 className="cv-section-title">TECHNICAL SKILLS</h2>
-                <p className="cv-skills">{skills}</p>
-              </div>
-            )}
+            {/* Skills and Technical Skills Side-by-Side */}
+{(skills || technicalSkills) && (
+  <div className="cv-section grid grid-cols-2 gap-8">
+    
+    {/* Left Side: Soft Skills */}
+    <div>
+      <h2 className="cv-section-title border-b-2 border-blue-500 mb-2">Soft Skills</h2>
+      <p className="cv-skills whitespace-pre-line text-sm">
+        {skills || "No skills added yet."}
+      </p>
+    </div>
+
+    {/* Right Side: Technical Skills */}
+    <div>
+      <h2 className="cv-section-title border-b-2 border-blue-500 mb-2">Technical Skills</h2>
+      <p className="cv-skills whitespace-pre-line text-sm">
+        {technicalSkills || "No skills added yet."}
+      </p>
+    </div>
+
+  </div>
+)}
 
             {/* Work Experience */}
             {experience.length > 0 && (
@@ -782,6 +1108,18 @@ const saveResume = async () => {
                   </div>
                 ))}
               </div>
+
+              
+            )}
+
+            {/* References - Added at the end */}
+            {references.length > 0 && (
+                <div className="cv-section">
+                    <h2 className="cv-section-title">References</h2>
+                    {references.map((ref, index) => (
+                        <ReferenceItem key={index} refData={ref} />
+                    ))}
+                </div>
             )}
           </div>
         );
@@ -810,13 +1148,28 @@ const saveResume = async () => {
               </div>
             )}
 
-            {/* Skills */}
-            {skills && (
-              <div className="cv-section">
-                <h2 className="cv-section-title">🛠️ Skills & Expertise</h2>
-                <p className="cv-skills">{skills}</p>
-              </div>
-            )}
+            {/* Skills and Technical Skills Side-by-Side */}
+{(skills || technicalSkills) && (
+  <div className="cv-section grid grid-cols-2 gap-8">
+    
+    {/* Left Side: Soft Skills */}
+    <div>
+      <h2 className="cv-section-title border-b-2 border-blue-500 mb-2">Soft Skills</h2>
+      <p className="cv-skills whitespace-pre-line text-sm">
+        {skills || "No skills added yet."}
+      </p>
+    </div>
+
+    {/* Right Side: Technical Skills */}
+    <div>
+      <h2 className="cv-section-title border-b-2 border-blue-500 mb-2">Technical Skills</h2>
+      <p className="cv-skills whitespace-pre-line text-sm">
+        {technicalSkills || "No skills added yet."}
+      </p>
+    </div>
+
+  </div>
+)}
 
             {/* Work Experience */}
             {experience.length > 0 && (
@@ -900,6 +1253,16 @@ const saveResume = async () => {
                   </div>
                 ))}
               </div>
+            )}
+
+            {/* References - Added at the end */}
+            {references.length > 0 && (
+                <div className="cv-section">
+                    <h2 className="cv-section-title">References</h2>
+                    {references.map((ref, index) => (
+                        <ReferenceItem key={index} refData={ref} />
+                    ))}
+                </div>
             )}
           </div>
         );
@@ -1255,6 +1618,28 @@ const saveResume = async () => {
                         placeholder="+94 77 123 4567"
                       />
                     </div>
+
+                    {/* Profile Photo Upload */}
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-sm text-gray-300 mb-2">Profile Photo (Modern template only)</label>
+                      <div className="flex items-center gap-4">
+<div className="w-20 h-20 bg-white/5 overflow-hidden border border-white/10 flex items-center justify-center">
+                          {formData.personalInfo.photo ? (
+                            <img src={formData.personalInfo.photo} alt="Profile" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="text-gray-400 text-sm px-2">No photo</div>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <input id="photo-upload" type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e)} className="hidden" />
+                          <label htmlFor="photo-upload" className="px-4 py-2 bg-white/10 rounded-2xl cursor-pointer hover:bg-white/20">Upload Photo</label>
+                          <button onClick={() => setFormData(prev => ({ ...prev, personalInfo: { ...prev.personalInfo, photo: '' } }))} className="px-4 py-2 bg-white/10 rounded-2xl hover:bg-white/20">Remove</button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-2">Recommended: square image, at least 400×400 for good print quality.</p>
+<p className="text-xs text-gray-400 mt-1">Allowed types: JPG, PNG, WebP. Max size: 2 MB.</p>
+                    </div>
                     <div>
                       <label className="block text-sm text-gray-300 mb-2">Address</label>
                       <input
@@ -1288,26 +1673,59 @@ const saveResume = async () => {
                   </div>
                 </div>
 
-                {/* Summary */}
+                {/* Professional Summary - Updated with AI Button */}
                 <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
-                  <h3 className="text-xl font-semibold text-white mb-4">Professional Summary</h3>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-2xl font-bold text-white">Professional Summary</h3>
+                    
+                    {/* AI Generate Button */}
+                    <button
+  onClick={generateAiSummary}
+  disabled={isAiLoading}
+  className="flex items-center gap-2 text-sm bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-2 rounded-xl hover:shadow-lg hover:from-indigo-600 hover:to-purple-600 transition disabled:opacity-50"
+>
+  {isAiLoading ? (
+    <>
+      <Loader2 className="w-4 h-4 animate-spin" /> Writing...
+    </>
+  ) : (
+    <>
+      <Wand2 className="w-4 h-4" /> Auto-Write with AI
+    </>
+  )}
+</button>
+                  </div>
+                  
                   <textarea
                     value={formData.summary}
                     onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
-                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60 h-32 resize-none"
-                    placeholder="Write a compelling professional summary..."
+                    placeholder="Write a compelling summary or use the AI button to generate one based on your skills and experience..."
+                    className="w-full px-6 py-5 bg-white/10 border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/60 focus:border-purple-400 transition h-48 resize-none backdrop-blur-sm"
                   />
+                  <p className="text-xs text-gray-400 mt-2 text-right">
+                    {formData.summary.split(/\s+/).filter(word => word.length > 0).length} words
+                  </p>
                 </div>
 
-                {/* Skills */}
+                {/* Soft Skills - CORRECTED */}
+                <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
+                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <Code className="w-5 h-5" /> Soft Skills
+                  </h3>
+                  <textarea
+                    value={formData.skills}
+                    onChange={(e) => setFormData(prev => ({ ...prev, skills: e.target.value }))}
+                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white h-32"
+                    placeholder="List your key skills..."
+                  />
+                </div>
+
+                {/* Technical Skills - NEW SECTION */}
                 <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
-                  <h3 className="text-xl font-semibold text-white mb-4">Skills</h3>
-                  <textarea
-                    value={formData.skills}
-                    onChange={(e) => setFormData(prev => ({ ...prev, skills: e.target.value }))}
-                    className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60 h-32 resize-none"
-                    placeholder="List your key skills..."
-                  />
+                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <Code className="w-5 h-5" /> Technical Skills
+                  </h3>
+                  <textarea value={formData.technicalSkills} onChange={(e) => handleTextChange('technicalSkills', e.target.value)} className="w-full rounded-2xl bg-slate-900/60 border border-white/10 px-4 py-3 text-white h-32" placeholder="List your technical skills (Languages, Frameworks, Tools)..." />
                 </div>
 
                 {/* GitHub Integration */}
@@ -1528,7 +1946,7 @@ const saveResume = async () => {
 }}
                       className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full hover:shadow-lg transition"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-10 h-4" />
                       Add Project
                     </button>
                   </div>
@@ -1561,6 +1979,58 @@ const saveResume = async () => {
   </button>
 </div>
 
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* References - NEW SECTION */}
+                {/* --- UPDATED REFERENCES SECTION WITH EDIT BUTTON --- */}
+                <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                      <Users className="w-5 h-5" /> References
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setCurrentEntry({
+                          type: 'references',
+                          title: '',
+                          company: '',
+                          location: '',
+                          description: '',
+                          current: false
+                        });
+                        setShowEntryForm(true);
+                      }}
+                      className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full hover:shadow-lg transition"
+                    >
+                      <Plus className="w-4 h-4" /> Add Reference
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {formData.references.map((ref, index) => (
+                      <div key={index} className="bg-slate-900/60 border border-white/10 rounded-2xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-white font-semibold">{ref.title}</h4>
+                            <p className="text-gray-300 text-sm">{ref.company}</p>
+                            <p className="text-gray-400 text-xs">{ref.description}</p>
+                          </div>
+                          <div className="flex gap-2"> {/* Added Wrapper for Edit/Delete Buttons */}
+                            <button
+                                onClick={() => {
+                                  setCurrentEntry({ ...ref, index, type: 'references' }); // Load Data for Editing
+                                  setShowEntryForm(true);
+                                }}
+                                className="text-blue-400 hover:text-blue-300 transition"
+                            >
+                                Edit
+                            </button>
+                            <button onClick={() => removeEntry('references', index)} className="text-red-400 hover:text-red-300 transition">
+                                <X className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1607,13 +2077,24 @@ const saveResume = async () => {
           )}
 
 {activeTab === 'preview' && (
-  <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-4xl mx-auto">
+  <div className="max-w-4xl mx-auto my-10">
     {/* Clean & Single Download Button */}
-    <div className="flex justify-center mb-8">
+    <div className="flex justify-end gap-3 mb-4">
+      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePreviewPhotoUpload} />
+
+      <button onClick={() => photoInputRef.current?.click()} className="bg-white/10 text-gray-200 px-4 py-2 rounded-2xl hover:bg-white/20">Change Photo</button>
+
+      <button onClick={() => handlePersonalInfoChange('photo', '')} className="bg-white/10 text-gray-200 px-4 py-2 rounded-2xl hover:bg-white/20">Remove Photo</button>
+
+      <button onClick={() => setIsInlineEdit(prev => !prev)} className={`px-4 py-2 rounded-2xl font-semibold ${isInlineEdit ? 'bg-yellow-500 text-white' : 'bg-white/10 text-gray-200 hover:bg-white/20'}`}>{isInlineEdit ? 'Exit Edit' : 'Edit Preview'}</button>
+      {isInlineEdit && (
+        <button onClick={saveResume} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-2xl">Save Changes</button>
+      )}
+
       <button
         onClick={downloadPDF}
         disabled={isGenerating}
-        className={`flex items-center gap-3 px-8 py-4 rounded-2xl text-white font-semibold hover:shadow-2xl transition disabled:opacity-50 shadow-lg
+        className={`flex items-center gap-3 px-6 py-2 rounded-2xl text-white font-semibold hover:shadow-2xl transition disabled:opacity-50 shadow-lg
           ${selectedTemplate === 'modern'
             ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
             : selectedTemplate === 'classic'
@@ -1636,14 +2117,16 @@ const saveResume = async () => {
     </div>
 
     {/* Only ONE Resume Preview – Clean & Perfect */}
-    
+
+    <div className="bg-white p-8 rounded-2xl shadow-2xl overflow-hidden">
+
         <div 
   id="resume-pdf-content"
-  className="bg-white mx-auto shadow-2xl rounded-2xl overflow-hidden"
+  className="mx-auto shadow-2xl rounded-2xl overflow-hidden"
   style={{
     width: '210mm',           // A4 width
     minHeight: '297mm',        // A4 height
-    padding: '18mm 15mm',      // Top 18mm, sides 15mm → කිසිම කැපීමක් නැහැ
+    padding: '18mm 15mm',      // Restored top padding for original layout
     boxSizing: 'border-box',
     background: 'white',
     margin: '20px auto',
@@ -1653,105 +2136,129 @@ const saveResume = async () => {
 >
   {generateProfessionalCV()}
 </div>
+    </div>
   </div>
 )}
 
           {/* Entry Form Modal */}
-          {showEntryForm && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-slate-900 border border-white/10 rounded-3xl p-6 w-full max-w-2xl">
-                <h3 className="text-xl font-semibold text-white mb-4">Add {currentEntry.type}</h3>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-2">Title</label>
-                      <input
-                        type="text"
-                        value={currentEntry.title}
-                        onChange={(e) => setCurrentEntry(prev => ({ ...prev, title: e.target.value }))}
-                        className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60"
-                        placeholder="Job Title"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-2">Company</label>
-                      <input
-                        type="text"
-                        value={currentEntry.company}
-                        onChange={(e) => setCurrentEntry(prev => ({ ...prev, company: e.target.value }))}
-                        className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60"
-                        placeholder="Company Name"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-2">Location</label>
-                    <input
-                      type="text"
-                      value={currentEntry.location}
-                      onChange={(e) => setCurrentEntry(prev => ({ ...prev, location: e.target.value }))}
-                      className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60"
-                      placeholder="City, Country"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-2">Start Date</label>
-                      <input
-                        type="month"
-                        value={currentEntry.startDate}
-                        onChange={(e) => setCurrentEntry(prev => ({ ...prev, startDate: e.target.value }))}
-                        className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-2">End Date</label>
-                      <input
-                        type="month"
-                        value={currentEntry.endDate}
-                        onChange={(e) => setCurrentEntry(prev => ({ ...prev, endDate: e.target.value }))}
-                        disabled={currentEntry.current}
-                        className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60 disabled:opacity-50"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="current"
-                      checked={currentEntry.current}
-                      onChange={(e) => setCurrentEntry(prev => ({ ...prev, current: e.target.checked }))}
-                      className="rounded"
-                    />
-                    <label htmlFor="current" className="text-sm text-gray-300">Currently working here</label>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-2">Description</label>
-                    <textarea
-                      value={currentEntry.description}
-                      onChange={(e) => setCurrentEntry(prev => ({ ...prev, description: e.target.value }))}
-                      className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/60 h-32 resize-none"
-                      placeholder="Describe your role and achievements..."
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3 mt-6">
-                  <button
-                    onClick={() => setShowEntryForm(false)}
-                    className="px-6 py-3 bg-white/10 text-white rounded-2xl hover:bg-white/20 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={addEntry}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl hover:shadow-lg transition"
-                  >
-                    Add Entry
-                  </button>
-                </div>
+          {/* Entry Form Modal - Cleaned & Single Form */}
+{showEntryForm && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="bg-slate-900 border border-white/10 rounded-3xl p-6 w-full max-w-2xl overflow-y-auto max-h-[90vh]">
+      <h3 className="text-xl font-semibold text-white mb-6 capitalize">
+        {currentEntry.index !== undefined ? 'Edit' : 'Add'} {currentEntry.type === 'references' ? 'Reference' : currentEntry.type}
+      </h3>
+      
+      <div className="space-y-4">
+        {/* Title & Company Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">
+              {currentEntry.type === 'references' ? 'Full Name' : currentEntry.type === 'education' ? 'Degree/Field' : 'Title'}
+            </label>
+            <input 
+              type="text" 
+              value={currentEntry.title} 
+              onChange={(e) => setCurrentEntry(prev => ({ ...prev, title: e.target.value }))} 
+              className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white focus:ring-2 focus:ring-purple-500/50 outline-none" 
+              placeholder="e.g. Software Engineer / BSc in IT" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">
+              {currentEntry.type === 'references' ? 'Position & Company' : 'Institution / Company'}
+            </label>
+            <input 
+              type="text" 
+              value={currentEntry.company} 
+              onChange={(e) => setCurrentEntry(prev => ({ ...prev, company: e.target.value }))} 
+              className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white focus:ring-2 focus:ring-purple-500/50 outline-none" 
+              placeholder="Company or School Name" 
+            />
+          </div>
+        </div>
+
+        {/* Location (Hide for references if you want, or keep it) */}
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">Location</label>
+          <input
+            type="text"
+            value={currentEntry.location}
+            onChange={(e) => setCurrentEntry(prev => ({ ...prev, location: e.target.value }))}
+            className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white focus:ring-2 focus:ring-purple-500/50 outline-none"
+            placeholder="City, Country"
+          />
+        </div>
+
+        {/* Dates - Hide only for References */}
+        {currentEntry.type !== 'references' && (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Start Date</label>
+                <input
+                  type="month"
+                  value={currentEntry.startDate}
+                  onChange={(e) => setCurrentEntry(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">End Date</label>
+                <input
+                  type="month"
+                  value={currentEntry.endDate}
+                  onChange={(e) => setCurrentEntry(prev => ({ ...prev, endDate: e.target.value }))}
+                  disabled={currentEntry.current}
+                  className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white disabled:opacity-50 outline-none"
+                />
               </div>
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="current_checkbox"
+                checked={currentEntry.current}
+                onChange={(e) => setCurrentEntry(prev => ({ ...prev, current: e.target.checked }))}
+                className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              />
+              <label htmlFor="current_checkbox" className="text-sm text-gray-300">Present / Currently ongoing</label>
+            </div>
+          </>
+        )}
+
+        {/* Description / Contact Info */}
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">
+            {currentEntry.type === 'references' ? 'Contact Information' : 'Description / Achievements'}
+          </label>
+          <textarea
+            value={currentEntry.description}
+            onChange={(e) => setCurrentEntry(prev => ({ ...prev, description: e.target.value }))}
+            className="w-full rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-white h-32 resize-none focus:ring-2 focus:ring-purple-500/50 outline-none"
+            placeholder={currentEntry.type === 'references' ? "Phone: +94... | Email: john@doe.com" : "Describe your key responsibilities and wins..."}
+          />
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3 mt-8">
+        <button
+          onClick={() => setShowEntryForm(false)}
+          className="px-6 py-3 bg-white/5 text-white rounded-2xl hover:bg-white/10 transition border border-white/10"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={addEntry}
+          className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl hover:shadow-lg transition font-medium"
+        >
+          {currentEntry.index !== undefined ? 'Update Entry' : 'Add to Resume'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         </div>
       </section>
     
