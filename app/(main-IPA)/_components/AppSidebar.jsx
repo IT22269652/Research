@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar,
   SidebarContent,
@@ -12,13 +12,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Mic, Plus, LayoutDashboard, Calendar, FileText, Settings, Home } from "lucide-react"
+import { Mic, Plus, LayoutDashboard, Calendar, FileText, Settings, Home, ClipboardList, LogOut } from "lucide-react"
 
 const menuItems = [
   {
     title: "Home",
     icon: Home,
-    url: "/",
+    url: "/InterviewHome",
   },
   {
     title: "Dashboard",
@@ -26,27 +26,49 @@ const menuItems = [
     url: "/InterviewDashboard",
   },
   {
+    title: "Create Interview",
+    icon: Plus,
+    url: "/InterviewDashboard/CreateInterview",
+  },
+  {
     title: "Scheduled Interview",
     icon: Calendar,
-    url: "/scheduled-interview",
+    url: "/InterviewDashboard/ScheduledInterview",
   },
   {
-    title: "All Interview",
-    icon: FileText,
-    url: "/all-interview",
-  },
-  {
-    title: "Settings",
-    icon: Settings,
-    url: "/settings",
+    title: "Interview Results",
+    icon: ClipboardList,
+    url: "/InterviewDashboard/Results",
   },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (url) => {
+    // Exact match for home
+    if (url === "/InterviewHome") {
+      return pathname === "/InterviewHome";
+    }
+    
+    // Exact match for Dashboard (not matching child routes)
+    if (url === "/InterviewDashboard") {
+      return pathname === "/InterviewDashboard";
+    }
+    
+    // For other routes, check if pathname starts with the url
     return pathname === url || pathname.startsWith(url + '/');
+  };
+
+  const handleLogout = () => {
+    // Add any logout logic here (e.g., clearing tokens, session data)
+    // For example:
+    // localStorage.removeItem('token');
+    // sessionStorage.clear();
+    
+    // Navigate to home page
+    router.push('/');
   };
 
   return (
@@ -73,19 +95,6 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-2">
-              {/* Create New Interview Button */}
-              <SidebarMenuItem className="mb-4">
-                <SidebarMenuButton 
-                  asChild 
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-2 py-7 rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all duration-300 hover:scale-[1.02]"
-                >
-                  <a href="/InterviewDashboard/CreateInterview" className="flex items-center gap-3">
-                    <Plus className="w-6 h-6" />
-                    <span className="text-base font-semibold">Create New Interview</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
               {/* Menu Items */}
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
@@ -118,6 +127,21 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Logout Button */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-4 py-4 px-4 rounded-xl transition-all duration-200 hover:bg-red-600/20 border-l-4 border-transparent hover:border-red-500 w-full text-left group"
+                  >
+                    <LogOut className="w-6 h-6 text-gray-400 group-hover:text-red-400" />
+                    <span className="text-base font-medium text-gray-300 group-hover:text-red-300">
+                      Logout
+                    </span>
+                  </button>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
