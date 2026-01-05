@@ -308,45 +308,45 @@ export default function ScheduledInterviewPage() {
                 Schedule Interview
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="bg-white border-gray-300 max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="text-gray-100">Schedule New Interview</DialogTitle>
-                <DialogDescription className="text-gray-400">
+                <DialogTitle className="text-gray-900">Schedule New Interview</DialogTitle>
+                <DialogDescription className="text-gray-600">
                   Fill in the details to schedule an interview. A Google Meet link will be generated automatically.
                 </DialogDescription>
               </DialogHeader>
               
               <form onSubmit={handleCreate} className="space-y-4 mt-4">
                 <div>
-                  <label className="text-sm text-gray-300 mb-2 block">Interview Title *</label>
+                  <label className="text-sm text-gray-700 mb-2 block">Interview Title *</label>
                   <Input 
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
                     placeholder="e.g., Senior Full Stack Developer Interview"
-                    className="bg-slate-900/50 border-slate-600 text-gray-100"
+                    className="bg-gray-50 border-gray-300 text-gray-900"
                     required
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm text-gray-300 mb-2 block">Candidate Name *</label>
+                    <label className="text-sm text-gray-700 mb-2 block">Candidate Name *</label>
                     <Input 
                       value={formData.candidateName}
                       onChange={(e) => setFormData({...formData, candidateName: e.target.value})}
                       placeholder="John Doe"
-                      className="bg-slate-900/50 border-slate-600 text-gray-100"
+                      className="bg-gray-50 border-gray-300 text-gray-900"
                       required
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-300 mb-2 block">Candidate Email *</label>
+                    <label className="text-sm text-gray-700 mb-2 block">Candidate Email *</label>
                     <Input 
                       type="email"
                       value={formData.candidateEmail}
                       onChange={(e) => setFormData({...formData, candidateEmail: e.target.value})}
                       placeholder="john@example.com"
-                      className="bg-slate-900/50 border-slate-600 text-gray-100"
+                      className="bg-gray-50 border-gray-300 text-gray-900"
                       required
                     />
                   </div>
@@ -354,28 +354,28 @@ export default function ScheduledInterviewPage() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="text-sm text-gray-300 mb-2 block">Date *</label>
+                    <label className="text-sm text-gray-700 mb-2 block">Date *</label>
                     <Input 
                       type="date"
                       value={formData.date}
                       onChange={(e) => setFormData({...formData, date: e.target.value})}
-                      className="bg-slate-900/50 border-slate-600 text-gray-100"
+                      className="bg-gray-50 border-gray-300 text-gray-900"
                       min={new Date().toISOString().split('T')[0]}
                       required
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-300 mb-2 block">Time *</label>
+                    <label className="text-sm text-gray-700 mb-2 block">Time *</label>
                     <Input 
                       type="time"
                       value={formData.time}
                       onChange={(e) => setFormData({...formData, time: e.target.value})}
-                      className="bg-slate-900/50 border-slate-600 text-gray-100"
+                      className="bg-gray-50 border-gray-300 text-gray-900"
                       required
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-300 mb-2 block">Duration (min) *</label>
+                    <label className="text-sm text-gray-700 mb-2 block">Duration (min) *</label>
                     <Input 
                       type="number"
                       value={formData.duration}
@@ -383,14 +383,14 @@ export default function ScheduledInterviewPage() {
                       placeholder="60"
                       min="15"
                       max="480"
-                      className="bg-slate-900/50 border-slate-600 text-gray-100"
+                      className="bg-gray-50 border-gray-300 text-gray-900"
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-300 mb-2 block">
+                  <label className="text-sm text-gray-700 mb-2 block">
                     Meeting Link (Optional)
                     <span className="text-gray-500 text-xs ml-2">Leave empty to auto-generate Google Meet link</span>
                   </label>
@@ -398,17 +398,17 @@ export default function ScheduledInterviewPage() {
                     value={formData.meetingLink}
                     onChange={(e) => setFormData({...formData, meetingLink: e.target.value})}
                     placeholder="https://meet.google.com/abc-defg-hij or Zoom link"
-                    className="bg-slate-900/50 border-slate-600 text-gray-100"
+                    className="bg-gray-50 border-gray-300 text-gray-900"
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-300 mb-2 block">Notes (Optional)</label>
+                  <label className="text-sm text-gray-700 mb-2 block">Notes (Optional)</label>
                   <Textarea 
                     value={formData.notes}
                     onChange={(e) => setFormData({...formData, notes: e.target.value})}
                     placeholder="Additional notes about the interview..."
-                    className="bg-slate-900/50 border-slate-600 text-gray-100 min-h-[100px]"
+                    className="bg-gray-50 border-gray-300 text-gray-900 min-h-[100px]"
                   />
                 </div>
 
@@ -420,14 +420,14 @@ export default function ScheduledInterviewPage() {
                       setIsCreateDialogOpen(false);
                       resetForm();
                     }}
-                    className="bg-slate-700 hover:bg-slate-600 border-slate-600"
+                    className="bg-gray-200 hover:bg-gray-300 border-gray-300 text-gray-900"
                     disabled={loading}
                   >
                     Cancel
                   </Button>
                   <Button 
                     type="submit" 
-                    className="bg-purple-600 hover:bg-purple-700"
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
                     disabled={loading}
                   >
                     {loading ? (
@@ -448,47 +448,47 @@ export default function ScheduledInterviewPage() {
           </Dialog>
         </div>
 
-        {/* Update Dialog */}
+        {/* Update Dialog - NOW WITH WHITE BACKGROUND */}
         <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
-          <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="bg-white border-gray-300 max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-gray-100">Update Interview</DialogTitle>
-              <DialogDescription className="text-gray-400">
+              <DialogTitle className="text-gray-900">Update Interview</DialogTitle>
+              <DialogDescription className="text-gray-600">
                 Modify the interview details below
               </DialogDescription>
             </DialogHeader>
             
             <form onSubmit={handleUpdate} className="space-y-4 mt-4">
               <div>
-                <label className="text-sm text-gray-300 mb-2 block">Interview Title *</label>
+                <label className="text-sm text-gray-700 mb-2 block">Interview Title *</label>
                 <Input 
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
                   placeholder="e.g., Senior Full Stack Developer Interview"
-                  className="bg-slate-900/50 border-slate-600 text-gray-100"
+                  className="bg-gray-50 border-gray-300 text-gray-900"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-gray-300 mb-2 block">Candidate Name *</label>
+                  <label className="text-sm text-gray-700 mb-2 block">Candidate Name *</label>
                   <Input 
                     value={formData.candidateName}
                     onChange={(e) => setFormData({...formData, candidateName: e.target.value})}
                     placeholder="John Doe"
-                    className="bg-slate-900/50 border-slate-600 text-gray-100"
+                    className="bg-gray-50 border-gray-300 text-gray-900"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-300 mb-2 block">Candidate Email *</label>
+                  <label className="text-sm text-gray-700 mb-2 block">Candidate Email *</label>
                   <Input 
                     type="email"
                     value={formData.candidateEmail}
                     onChange={(e) => setFormData({...formData, candidateEmail: e.target.value})}
                     placeholder="john@example.com"
-                    className="bg-slate-900/50 border-slate-600 text-gray-100"
+                    className="bg-gray-50 border-gray-300 text-gray-900"
                     required
                   />
                 </div>
@@ -496,27 +496,27 @@ export default function ScheduledInterviewPage() {
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="text-sm text-gray-300 mb-2 block">Date *</label>
+                  <label className="text-sm text-gray-700 mb-2 block">Date *</label>
                   <Input 
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({...formData, date: e.target.value})}
-                    className="bg-slate-900/50 border-slate-600 text-gray-100"
+                    className="bg-gray-50 border-gray-300 text-gray-900"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-300 mb-2 block">Time *</label>
+                  <label className="text-sm text-gray-700 mb-2 block">Time *</label>
                   <Input 
                     type="time"
                     value={formData.time}
                     onChange={(e) => setFormData({...formData, time: e.target.value})}
-                    className="bg-slate-900/50 border-slate-600 text-gray-100"
+                    className="bg-gray-50 border-gray-300 text-gray-900"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-300 mb-2 block">Duration (min) *</label>
+                  <label className="text-sm text-gray-700 mb-2 block">Duration (min) *</label>
                   <Input 
                     type="number"
                     value={formData.duration}
@@ -524,29 +524,29 @@ export default function ScheduledInterviewPage() {
                     placeholder="60"
                     min="15"
                     max="480"
-                    className="bg-slate-900/50 border-slate-600 text-gray-100"
+                    className="bg-gray-50 border-gray-300 text-gray-900"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-sm text-gray-300 mb-2 block">Meeting Link</label>
+                <label className="text-sm text-gray-700 mb-2 block">Meeting Link</label>
                 <Input 
                   value={formData.meetingLink}
                   onChange={(e) => setFormData({...formData, meetingLink: e.target.value})}
                   placeholder="https://meet.google.com/..."
-                  className="bg-slate-900/50 border-slate-600 text-gray-100"
+                  className="bg-gray-50 border-gray-300 text-gray-900"
                 />
               </div>
 
               <div>
-                <label className="text-sm text-gray-300 mb-2 block">Notes</label>
+                <label className="text-sm text-gray-700 mb-2 block">Notes</label>
                 <Textarea 
                   value={formData.notes}
                   onChange={(e) => setFormData({...formData, notes: e.target.value})}
                   placeholder="Additional notes about the interview..."
-                  className="bg-slate-900/50 border-slate-600 text-gray-100 min-h-[100px]"
+                  className="bg-gray-50 border-gray-300 text-gray-900 min-h-[100px]"
                 />
               </div>
 
@@ -559,14 +559,14 @@ export default function ScheduledInterviewPage() {
                     setSelectedInterview(null);
                     resetForm();
                   }}
-                  className="bg-slate-700 hover:bg-slate-600 border-slate-600"
+                  className="bg-gray-200 hover:bg-gray-300 border-gray-300 text-gray-900"
                   disabled={loading}
                 >
                   Cancel
                 </Button>
                 <Button 
                   type="submit" 
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                   disabled={loading}
                 >
                   {loading ? (
