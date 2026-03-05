@@ -36,9 +36,9 @@ const menuItems = [
     url: "/InterviewDashboard/ScheduledInterview",
   },
   {
-    title: "Interview Results",
+    title: "Interview History",
     icon: ClipboardList,
-    url: "/InterviewDashboard/Results",
+    url: "/InterviewDashboard/History",
   },
 ]
 
