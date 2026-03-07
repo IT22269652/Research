@@ -1,760 +1,351 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Calendar, Clock, Plus, ArrowLeft, Video, Users, Trash2, ExternalLink, RefreshCw, Edit, CheckCircle, XCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export default function ScheduledInterviewPage() {
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
+import axios from "axios";
+import {
+  RadialBarChart,
+  RadialBar,
+  Legend,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid
+} from "recharts";
+
+export default function ScheduledInterview() {
+
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const [scheduledInterviews, setScheduledInterviews] = useState([]);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedInterview, setSelectedInterview] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState({ show: false, message: "", type: "" });
-  const [formData, setFormData] = useState({
-    title: "",
-    candidateName: "",
-    candidateEmail: "",
-    date: "",
-    time: "",
-    duration: "60",
-    meetingLink: "",
-    notes: "",
-  });
+  const interviewId = searchParams.get("id");
 
+  const [questions, setQuestions] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [currentAnswer, setCurrentAnswer] = useState("");
+
+  const [completed, setCompleted] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const [cameraOn, setCameraOn] = useState(false);
+  const [micOn, setMicOn] = useState(false);
+  const [time, setTime] = useState(0);
+
+  const videoRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const timerRef = useRef(null);
+
+  // ================= TIMER =================
   useEffect(() => {
-    fetchScheduledInterviews();
+    timerRef.current = setInterval(() => {
+      setTime((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timerRef.current);
   }, []);
 
-  const showToast = (message, type = "success") => {
-    setToast({ show: true, message, type });
-    setTimeout(() => {
-      setToast({ show: false, message: "", type: "" });
-    }, 4000);
+  const formatTime = () => {
+    const m = String(Math.floor(time / 60)).padStart(2, "0");
+    const s = String(time % 60).padStart(2, "0");
+    return `${m}:${s}`;
   };
 
-  const fetchScheduledInterviews = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('http://localhost:5000/api/scheduled-interview');
-      const data = await res.json();
-      if (data.success) {
-        setScheduledInterviews(data.interviews || []);
-      } else {
-        showToast("Failed to load interviews", "error");
+  // ================= FETCH QUESTIONS =================
+  useEffect(() => {
+    if (!interviewId) return;
+    axios
+      .get(`http://localhost:5000/api/interview/${interviewId}`)
+      .then((res) => setQuestions(res.data.questions));
+  }, [interviewId]);
+
+  // ================= AI SPEAK =================
+  const speak = (text) => {
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.lang = "en-US";
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(speech);
+  };
+
+  useEffect(() => {
+    if (questions.length > 0) {
+      speak(questions[currentIndex]);
+    }
+  }, [questions]);
+
+  // ================= IMPROVED MIC =================
+  const toggleMic = () => {
+
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Please use Google Chrome");
+      return;
+    }
+
+    if (micOn) {
+      recognitionRef.current.stop();
+      setMicOn(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+      let finalTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const result = event.results[i][0];
+          if (result.confidence > 0.6) {
+            finalTranscript += result.transcript + " ";
+          }
+        }
       }
-    } catch (error) {
-      console.error("Error:", error);
-      showToast("Failed to connect to server", "error");
-    } finally {
-      setLoading(false);
+      setCurrentAnswer((prev) => prev + " " + finalTranscript);
+    };
+
+    recognition.onerror = (e) => {
+      console.log("Speech error:", e.error);
+    };
+
+    recognition.start();
+    recognitionRef.current = recognition;
+    setMicOn(true);
+  };
+
+  // ================= CAMERA =================
+  const toggleCamera = async () => {
+    if (cameraOn) {
+      videoRef.current.srcObject?.getTracks().forEach((t) => t.stop());
+      setCameraOn(false);
+      return;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    videoRef.current.srcObject = stream;
+    setCameraOn(true);
+  };
+
+  // ================= SAVE ANSWER =================
+  const handleSave = () => {
+
+    if (!currentAnswer.trim()) return;
+
+    const updated = [...answers, currentAnswer.trim()];
+    setAnswers(updated);
+    setCurrentAnswer("");
+
+    if (currentIndex < questions.length - 1) {
+      const next = currentIndex + 1;
+      setCurrentIndex(next);
+      setTimeout(() => speak(questions[next]), 1000);
+    } else {
+      setCompleted(true);
+      speak("Interview completed successfully.");
     }
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const res = await fetch('http://localhost:5000/api/scheduled-interview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        showToast("Interview scheduled successfully! 🎉", "success");
-        setIsCreateDialogOpen(false);
-        resetForm();
-        fetchScheduledInterviews();
-      } else {
-        showToast(data.message || "Failed to schedule interview", "error");
-      }
-    } catch (error) {
-      console.error("Error scheduling interview:", error);
-      showToast("Failed to connect to server", "error");
-    } finally {
-      setLoading(false);
-    }
+  // ================= GENERATE REPORT =================
+  const generateReport = async () => {
+    const res = await axios.post(
+      "http://localhost:5000/api/interview/score",
+      { interviewId, answers }
+    );
+    setResult(res.data);
+    setShowReport(true);
   };
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const res = await fetch(`http://localhost:5000/api/scheduled-interview/${selectedInterview._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        showToast("Interview updated successfully! ✅", "success");
-        setIsUpdateDialogOpen(false);
-        setSelectedInterview(null);
-        resetForm();
-        fetchScheduledInterviews();
-      } else {
-        showToast(data.message || "Failed to update interview", "error");
-      }
-    } catch (error) {
-      console.error("Error updating interview:", error);
-      showToast("Failed to connect to server", "error");
-    } finally {
-      setLoading(false);
-    }
+  const downloadPDF = () => {
+    window.open(
+      `http://localhost:5000/api/interview/report/${result._id}`,
+      "_blank"
+    );
   };
 
-  const handleDelete = async () => {
-    setLoading(true);
-    
-    try {
-      const res = await fetch(`http://localhost:5000/api/scheduled-interview/${selectedInterview._id}`, {
-        method: 'DELETE'
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        showToast("Interview deleted successfully! 🗑️", "success");
-        setIsDeleteDialogOpen(false);
-        setSelectedInterview(null);
-        fetchScheduledInterviews();
-      } else {
-        showToast(data.message || "Failed to delete interview", "error");
-      }
-    } catch (error) {
-      console.error("Error deleting:", error);
-      showToast("Failed to connect to server", "error");
-    } finally {
-      setLoading(false);
-    }
+  const endCall = () => {
+    recognitionRef.current?.stop();
+    videoRef.current?.srcObject?.getTracks().forEach((t) => t.stop());
+    router.push("/InterviewDashboard");
   };
 
-  const handleStatusChange = async (interviewId, newStatus) => {
-    try {
-      const res = await fetch(`http://localhost:5000/api/scheduled-interview/${interviewId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
+  // ================= COMPLETED SCREEN =================
+  if (completed && !showReport) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-black text-white">
+        <h1 className="text-4xl font-bold mb-6">Interview Completed 🎉</h1>
+        <button
+          onClick={generateReport}
+          className="bg-green-600 px-8 py-4 rounded-xl text-lg hover:scale-105 transition"
+        >
+          Generate Feedback & Score
+        </button>
+      </div>
+    );
+  }
 
-      const data = await res.json();
-      if (data.success) {
-        showToast(`Status changed to ${newStatus}! ✅`, "success");
-        fetchScheduledInterviews();
-      } else {
-        showToast(data.message || "Failed to update status", "error");
-      }
-    } catch (error) {
-      console.error("Error updating status:", error);
-      showToast("Failed to connect to server", "error");
-    }
-  };
+  // ================= REPORT SCREEN =================
+  if (showReport && result) {
 
-  const openUpdateDialog = (interview) => {
-    setSelectedInterview(interview);
-    const formattedDate = new Date(interview.date).toISOString().split('T')[0];
-    setFormData({
-      title: interview.title,
-      candidateName: interview.candidateName,
-      candidateEmail: interview.candidateEmail,
-      date: formattedDate,
-      time: interview.time,
-      duration: interview.duration.toString(),
-      meetingLink: interview.meetingLink || "",
-      notes: interview.notes || "",
-    });
-    setIsUpdateDialogOpen(true);
-  };
+    const chartData = [
+      { name: "Communication", value: result.breakdown.communication },
+      { name: "Technical", value: result.breakdown.technical },
+      { name: "Confidence", value: result.breakdown.confidence }
+    ];
 
-  const openDeleteDialog = (interview) => {
-    setSelectedInterview(interview);
-    setIsDeleteDialogOpen(true);
-  };
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-black p-10 text-white">
 
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      candidateName: "",
-      candidateEmail: "",
-      date: "",
-      time: "",
-      duration: "60",
-      meetingLink: "",
-      notes: "",
-    });
-  };
+        <h1 className="text-4xl font-bold text-center mb-10">
+          Interview Performance Report
+        </h1>
 
-  const handleJoinMeeting = (meetingLink) => {
-    if (meetingLink) {
-      window.open(meetingLink, '_blank', 'noopener,noreferrer');
-    }
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
-
-  const formatTime = (timeString) => {
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
-
-  const isUpcoming = (date, time) => {
-    const interviewDateTime = new Date(date);
-    const [hours, minutes] = time.split(':');
-    interviewDateTime.setHours(parseInt(hours), parseInt(minutes));
-    return interviewDateTime > new Date();
-  };
-
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'scheduled':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/50';
-      case 'completed':
-        return 'bg-green-500/20 text-green-400 border-green-500/50';
-      case 'cancelled':
-        return 'bg-red-500/20 text-red-400 border-red-500/50';
-      default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/50';
-    }
-  };
-
-  return (
-    <div className="min-h-screen p-10">
-      <div className="max-w-7xl mx-auto">
-        {/* Toast Notification */}
-        {toast.show && (
-          <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-top-5">
-            <Alert 
-              className={`min-w-[350px] shadow-lg border-2 ${
-                toast.type === "success" 
-                  ? "bg-green-500/10 border-green-500/50 text-green-400" 
-                  : "bg-red-500/10 border-red-500/50 text-red-400"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                {toast.type === "success" ? (
-                  <CheckCircle className="w-5 h-5" />
-                ) : (
-                  <XCircle className="w-5 h-5" />
-                )}
-                <AlertDescription className="font-medium">{toast.message}</AlertDescription>
-              </div>
-            </Alert>
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-5">
-            <ArrowLeft 
-              onClick={() => router.back()} 
-              className='cursor-pointer text-gray-300 hover:text-white transition-colors' 
-            />
-            <div>
-              <h1 className="text-3xl font-bold text-gray-100">Scheduled Interviews</h1>
-              <p className="text-gray-400 mt-1">Manage your interview schedule</p>
-            </div>
-          </div>
-
-          {/* Create Dialog */}
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-purple-600 hover:bg-purple-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Schedule Interview
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-white border-gray-300 max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="text-gray-900">Schedule New Interview</DialogTitle>
-                <DialogDescription className="text-gray-600">
-                  Fill in the details to schedule an interview. A Google Meet link will be generated automatically.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <form onSubmit={handleCreate} className="space-y-4 mt-4">
-                <div>
-                  <label className="text-sm text-gray-700 mb-2 block">Interview Title *</label>
-                  <Input 
-                    value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    placeholder="e.g., Senior Full Stack Developer Interview"
-                    className="bg-gray-50 border-gray-300 text-gray-900"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-gray-700 mb-2 block">Candidate Name *</label>
-                    <Input 
-                      value={formData.candidateName}
-                      onChange={(e) => setFormData({...formData, candidateName: e.target.value})}
-                      placeholder="John Doe"
-                      className="bg-gray-50 border-gray-300 text-gray-900"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-700 mb-2 block">Candidate Email *</label>
-                    <Input 
-                      type="email"
-                      value={formData.candidateEmail}
-                      onChange={(e) => setFormData({...formData, candidateEmail: e.target.value})}
-                      placeholder="john@example.com"
-                      className="bg-gray-50 border-gray-300 text-gray-900"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-sm text-gray-700 mb-2 block">Date *</label>
-                    <Input 
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData({...formData, date: e.target.value})}
-                      className="bg-gray-50 border-gray-300 text-gray-900"
-                      min={new Date().toISOString().split('T')[0]}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-700 mb-2 block">Time *</label>
-                    <Input 
-                      type="time"
-                      value={formData.time}
-                      onChange={(e) => setFormData({...formData, time: e.target.value})}
-                      className="bg-gray-50 border-gray-300 text-gray-900"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-700 mb-2 block">Duration (min) *</label>
-                    <Input 
-                      type="number"
-                      value={formData.duration}
-                      onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                      placeholder="60"
-                      min="15"
-                      max="480"
-                      className="bg-gray-50 border-gray-300 text-gray-900"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm text-gray-700 mb-2 block">
-                    Meeting Link (Optional)
-                    <span className="text-gray-500 text-xs ml-2">Leave empty to auto-generate Google Meet link</span>
-                  </label>
-                  <Input 
-                    value={formData.meetingLink}
-                    onChange={(e) => setFormData({...formData, meetingLink: e.target.value})}
-                    placeholder="https://meet.google.com/abc-defg-hij or Zoom link"
-                    className="bg-gray-50 border-gray-300 text-gray-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm text-gray-700 mb-2 block">Notes (Optional)</label>
-                  <Textarea 
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                    placeholder="Additional notes about the interview..."
-                    className="bg-gray-50 border-gray-300 text-gray-900 min-h-[100px]"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    onClick={() => {
-                      setIsCreateDialogOpen(false);
-                      resetForm();
-                    }}
-                    className="bg-gray-200 hover:bg-gray-300 border-gray-300 text-gray-900"
-                    disabled={loading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Scheduling...
-                      </>
-                    ) : (
-                      <>
-                        <Calendar className="w-4 h-4 mr-2" />
-                        Schedule Interview
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+        {/* SCORE CARD */}
+        <div className="bg-white/10 backdrop-blur-xl p-8 rounded-2xl shadow-xl mb-10 text-center">
+          <h2 className="text-3xl font-bold">
+            Total Score: {result.score}/100
+          </h2>
         </div>
 
-        {/* Update Dialog - NOW WITH WHITE BACKGROUND */}
-        <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
-          <DialogContent className="bg-white border-gray-300 max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-gray-900">Update Interview</DialogTitle>
-              <DialogDescription className="text-gray-600">
-                Modify the interview details below
-              </DialogDescription>
-            </DialogHeader>
-            
-            <form onSubmit={handleUpdate} className="space-y-4 mt-4">
-              <div>
-                <label className="text-sm text-gray-700 mb-2 block">Interview Title *</label>
-                <Input 
-                  value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  placeholder="e.g., Senior Full Stack Developer Interview"
-                  className="bg-gray-50 border-gray-300 text-gray-900"
-                  required
-                />
-              </div>
+        {/* RADIAL CHART */}
+        <div className="flex justify-center mb-10">
+          <ResponsiveContainer width="60%" height={300}>
+            <RadialBarChart innerRadius="20%" outerRadius="100%" data={chartData}>
+              <RadialBar dataKey="value" background clockWise />
+              <Legend />
+              <Tooltip />
+            </RadialBarChart>
+          </ResponsiveContainer>
+        </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-700 mb-2 block">Candidate Name *</label>
-                  <Input 
-                    value={formData.candidateName}
-                    onChange={(e) => setFormData({...formData, candidateName: e.target.value})}
-                    placeholder="John Doe"
-                    className="bg-gray-50 border-gray-300 text-gray-900"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-700 mb-2 block">Candidate Email *</label>
-                  <Input 
-                    type="email"
-                    value={formData.candidateEmail}
-                    onChange={(e) => setFormData({...formData, candidateEmail: e.target.value})}
-                    placeholder="john@example.com"
-                    className="bg-gray-50 border-gray-300 text-gray-900"
-                    required
-                  />
-                </div>
-              </div>
+        {/* BAR CHART */}
+        <div className="flex justify-center mb-10">
+          <ResponsiveContainer width="80%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" stroke="#fff" />
+              <YAxis stroke="#fff" />
+              <Tooltip />
+              <Bar dataKey="value" fill="#4ade80" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm text-gray-700 mb-2 block">Date *</label>
-                  <Input 
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({...formData, date: e.target.value})}
-                    className="bg-gray-50 border-gray-300 text-gray-900"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-700 mb-2 block">Time *</label>
-                  <Input 
-                    type="time"
-                    value={formData.time}
-                    onChange={(e) => setFormData({...formData, time: e.target.value})}
-                    className="bg-gray-50 border-gray-300 text-gray-900"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-700 mb-2 block">Duration (min) *</label>
-                  <Input 
-                    type="number"
-                    value={formData.duration}
-                    onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                    placeholder="60"
-                    min="15"
-                    max="480"
-                    className="bg-gray-50 border-gray-300 text-gray-900"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-700 mb-2 block">Meeting Link</label>
-                <Input 
-                  value={formData.meetingLink}
-                  onChange={(e) => setFormData({...formData, meetingLink: e.target.value})}
-                  placeholder="https://meet.google.com/..."
-                  className="bg-gray-50 border-gray-300 text-gray-900"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-700 mb-2 block">Notes</label>
-                <Textarea 
-                  value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                  placeholder="Additional notes about the interview..."
-                  className="bg-gray-50 border-gray-300 text-gray-900 min-h-[100px]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline"
-                  onClick={() => {
-                    setIsUpdateDialogOpen(false);
-                    setSelectedInterview(null);
-                    resetForm();
-                  }}
-                  className="bg-gray-200 hover:bg-gray-300 border-gray-300 text-gray-900"
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Update Interview
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <AlertDialogContent className="bg-slate-800 border-slate-700">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-gray-100">Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription className="text-gray-400">
-                This action cannot be undone. This will permanently delete the scheduled interview
-                {selectedInterview && (
-                  <span className="block mt-2 text-purple-400 font-semibold">
-                    "{selectedInterview.title}"
-                  </span>
-                )}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel 
-                className="bg-slate-700 hover:bg-slate-600 border-slate-600"
-                disabled={loading}
-              >
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                className="bg-red-600 hover:bg-red-700"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </>
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Loading State */}
-        {loading && scheduledInterviews.length === 0 ? (
-          <div className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-12 border border-slate-700/50 text-center">
-            <RefreshCw className="w-12 h-12 text-purple-500 mx-auto mb-4 animate-spin" />
-            <p className="text-gray-400">Loading interviews...</p>
+        {/* QUESTION REVIEW */}
+        {questions.map((q, i) => (
+          <div key={i} className="bg-white/10 p-6 mb-6 rounded-xl">
+            <p className="font-semibold text-lg">Q{i + 1}: {q}</p>
+            <p className="mt-2 text-gray-200">Your Answer: {answers[i]}</p>
           </div>
-        ) : scheduledInterviews.length === 0 ? (
-          <div className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-12 border border-slate-700/50 text-center">
-            <Calendar className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-300 mb-2">No Scheduled Interviews</h2>
-            <p className="text-gray-400 mb-6">Schedule your first interview to get started</p>
-            <Button 
-              onClick={() => setIsCreateDialogOpen(true)}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Schedule Interview
-            </Button>
+        ))}
+
+        {/* AI FEEDBACK */}
+        <div className="bg-green-500/20 p-6 rounded-xl mb-8">
+          <h3 className="text-xl font-semibold mb-2">AI Feedback</h3>
+          <p>{result.feedback}</p>
+        </div>
+
+        <div className="flex justify-center gap-6">
+          <button
+            onClick={downloadPDF}
+            className="bg-blue-600 px-6 py-3 rounded-lg hover:scale-105 transition"
+          >
+            Download PDF
+          </button>
+
+          <button
+            onClick={() => router.push("/InterviewDashboard")}
+            className="bg-gray-700 px-6 py-3 rounded-lg"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ================= MEETING UI =================
+  return (
+    <div className="h-screen bg-gray-100 flex flex-col">
+
+      <div className="flex justify-between px-8 py-4 bg-white shadow">
+        <h1 className="font-bold text-lg">AI Interview Session</h1>
+        <span>⏱ {formatTime()}</span>
+      </div>
+
+      <div className="flex flex-1 p-6 gap-6">
+
+        <div className="flex-1 bg-white rounded-2xl shadow flex flex-col items-center justify-center">
+          <h2 className="text-xl font-semibold mb-4">AI Recruiter</h2>
+          <p className="text-lg text-center px-6">
+            {questions[currentIndex]}
+          </p>
+        </div>
+
+        <div className="flex-1 bg-white rounded-2xl shadow flex flex-col items-center justify-center">
+
+          <div className="w-60 h-60 rounded-full overflow-hidden bg-gray-300 flex items-center justify-center shadow-lg">
+            {cameraOn ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-2xl font-bold">You</span>
+            )}
           </div>
-        ) : (
-          /* Grid Layout - 3 per row */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {scheduledInterviews.map((interview) => {
-              const upcoming = isUpcoming(interview.date, interview.time);
-              
-              return (
-                <div 
-                  key={interview._id}
-                  className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-5 border border-slate-700/50 hover:border-purple-500/30 transition-all flex flex-col"
-                >
-                  {/* Header with Title and Actions */}
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-gray-200 flex-1 line-clamp-2">
-                      {interview.title}
-                    </h3>
-                    <div className="flex items-center gap-1 ml-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openUpdateDialog(interview)}
-                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 h-8 w-8 p-0"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openDeleteDialog(interview)}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-8 w-8 p-0"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
 
-                  {/* Status Dropdown */}
-                  <div className="mb-3">
-                    <Select 
-                      value={interview.status} 
-                      onValueChange={(value) => handleStatusChange(interview._id, value)}
-                    >
-                      <SelectTrigger className={`w-full h-8 text-xs font-semibold border ${getStatusColor(interview.status)}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        <SelectItem value="scheduled" className="text-blue-400">
-                          📅 Scheduled
-                        </SelectItem>
-                        <SelectItem value="completed" className="text-green-400">
-                          ✅ Completed
-                        </SelectItem>
-                        <SelectItem value="cancelled" className="text-red-400">
-                          ❌ Cancelled
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+          <textarea
+            className="w-3/4 mt-6 border p-3 rounded-lg"
+            rows="4"
+            value={currentAnswer}
+            onChange={(e) => setCurrentAnswer(e.target.value)}
+            placeholder="Your answer will appear here..."
+          />
 
-                  {/* Candidate Info */}
-                  <div className="space-y-2 mb-3">
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <Users className="w-4 h-4 flex-shrink-0" />
-                      <div className="overflow-hidden">
-                        <div className="text-gray-300 truncate">{interview.candidateName}</div>
-                        <div className="text-xs text-gray-500 truncate">{interview.candidateEmail}</div>
-                      </div>
-                    </div>
+          <button
+            onClick={handleSave}
+            className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg"
+          >
+            Save Answer
+          </button>
+        </div>
+      </div>
 
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <Calendar className="w-4 h-4 flex-shrink-0" />
-                      <span className="text-gray-300">{formatDate(interview.date)}</span>
-                    </div>
+      <div className="flex justify-center items-center gap-8 py-4 bg-white">
 
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <Clock className="w-4 h-4 flex-shrink-0" />
-                      <span className="text-gray-300">
-                        {formatTime(interview.time)} ({interview.duration} min)
-                      </span>
-                    </div>
-                  </div>
+        <button
+          onClick={toggleMic}
+          className={`w-14 h-14 rounded-full text-white transition
+          ${micOn ? "bg-green-600" : "bg-gray-600"}`}
+        >
+          🎤
+        </button>
 
-                  {/* Meeting Link */}
-                  {interview.meetingLink && (
-                    <Button
-                      onClick={() => handleJoinMeeting(interview.meetingLink)}
-                      className="w-full bg-green-600 hover:bg-green-700 mb-3"
-                      size="sm"
-                    >
-                      <Video className="w-4 h-4 mr-2" />
-                      Join Google Meet
-                    </Button>
-                  )}
+        <button
+          onClick={endCall}
+          className="w-16 h-16 rounded-full bg-red-600 text-white"
+        >
+          📞
+        </button>
 
-                  {/* Notes */}
-                  {interview.notes && (
-                    <div className="bg-slate-900/50 rounded-lg p-2 mt-auto">
-                      <p className="text-gray-400 text-xs line-clamp-2">
-                        <span className="text-gray-500 font-semibold">Notes: </span>
-                        {interview.notes}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <button
+          onClick={toggleCamera}
+          className={`w-14 h-14 rounded-full text-white transition
+          ${cameraOn ? "bg-green-600" : "bg-gray-600"}`}
+        >
+          🎥
+        </button>
+
       </div>
     </div>
   );
