@@ -1,228 +1,281 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
-import { Video, View, Calendar, Clock, Users, ArrowRight, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
+import {
+  Video,
+  View,
+  Plus,
+  ArrowRight,
+  BarChart3,
+  Award,
+  Target,
+  Briefcase
+} from "lucide-react";
 import Link from "next/link";
 
 function Dashboard() {
-  const router = useRouter();
-  const [interviewList, setInterviewList] = useState([]);
+
+  const [stats, setStats] = useState({});
   const [scheduledInterviews, setScheduledInterviews] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    fetchStats();
     fetchScheduledInterviews();
   }, []);
 
-  const fetchScheduledInterviews = async () => {
+  // ======================
+  // FETCH DASHBOARD STATS
+  // ======================
+
+  const fetchStats = async () => {
     try {
-      setLoading(true);
-      const res = await fetch('http://localhost:5000/api/scheduled-interview');
+
+      const res = await fetch(
+        "http://localhost:5000/api/interview/dashboard/stats"
+      );
+
       const data = await res.json();
-      if (data.success) {
-        // Get only the first 3 interviews for dashboard preview
-        setScheduledInterviews(data.interviews?.slice(0, 3) || []);
-      }
+
+      setStats(data);
+
     } catch (error) {
-      console.error("Error fetching scheduled interviews:", error);
-    } finally {
-      setLoading(false);
+      console.log(error);
     }
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
+  // ======================
+  // FETCH SCHEDULED INTERVIEWS
+  // ======================
 
-  const formatTime = (timeString) => {
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
+  const fetchScheduledInterviews = async () => {
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'scheduled':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'completed':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'cancelled':
-        return 'bg-red-50 text-red-700 border-red-200';
-      default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
+    try {
+
+      const res = await fetch(
+        "http://localhost:5000/api/scheduled-interview"
+      );
+
+      const data = await res.json();
+
+      if (data.success) {
+        setScheduledInterviews(
+          data.interviews?.slice(0, 3) || []
+        );
+      }
+
+    } catch (error) {
+      console.log(error);
     }
+
   };
 
   return (
     <div className="min-h-screen p-6">
-      {/* Dashboard Title */}
-      <h2 className="text-2xl font-bold text-gray-200 mb-6">Dashboard</h2>
 
-      {/* Action Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Create New Interview */}
-        <Link href={'InterviewDashboard/CreateInterview'} className="group bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl hover:bg-slate-800/60 hover:border-purple-500/30 transition-all duration-300 cursor-pointer">
-          <div className="flex flex-col items-start">
-            <div className="w-16 h-16 bg-blue-600/20 border border-blue-500/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-600/30 group-hover:scale-110 transition-all duration-300">
-              <Video className="w-8 h-8 text-blue-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-100 mb-2 group-hover:text-white transition-colors">
-              Create New Interview
-            </h3>
-            <p className="text-gray-400 text-base leading-relaxed">
-              Create AI Interviews and schedule them with Candidates
-            </p>
-          </div>
-        </Link>
+      {/* TITLE */}
 
-        {/* View All Interviews */}
-        <Link href={'InterviewDashboard/ScheduledInterview'} className="group bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl hover:bg-slate-800/60 hover:border-purple-500/30 transition-all duration-300 cursor-pointer">
-          <div className="flex flex-col items-start">
-            <div className="w-16 h-16 bg-purple-600/20 border border-purple-500/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-600/30 group-hover:scale-110 transition-all duration-300">
-              <View className="w-8 h-8 text-purple-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-100 mb-2 group-hover:text-white transition-colors">
-              View All Interviews
+      <h1 className="text-3xl font-bold text-gray-200 mb-8">
+        AI Interview Dashboard
+      </h1>
+
+      {/* =========================
+          ANALYTICS CARDS
+      ========================== */}
+
+      <div className="grid md:grid-cols-4 gap-6 mb-10">
+
+        {/* Total Interviews */}
+
+        <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
+
+          <div className="flex items-center gap-3 mb-3">
+            <BarChart3 className="text-blue-400"/>
+            <h3 className="text-gray-300 text-sm">
+              Total Interviews
             </h3>
-            <p className="text-gray-400 text-base leading-relaxed">
-              Schedule and previous interviews
-            </p>
           </div>
-        </Link>
+
+          <p className="text-3xl font-bold text-white">
+            {stats.totalInterviews || 0}
+          </p>
+
+        </div>
+
+
+        {/* Average Score */}
+
+        <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
+
+          <div className="flex items-center gap-3 mb-3">
+            <Target className="text-green-400"/>
+            <h3 className="text-gray-300 text-sm">
+              Average Score
+            </h3>
+          </div>
+
+          <p className="text-3xl font-bold text-white">
+            {stats.averageScore || 0}%
+          </p>
+
+        </div>
+
+
+        {/* Best Score */}
+
+        <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
+
+          <div className="flex items-center gap-3 mb-3">
+            <Award className="text-yellow-400"/>
+            <h3 className="text-gray-300 text-sm">
+              Best Score
+            </h3>
+          </div>
+
+          <p className="text-3xl font-bold text-white">
+            {stats.bestScore || 0}%
+          </p>
+
+        </div>
+
+
+        {/* Most Practiced Role */}
+
+        <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
+
+          <div className="flex items-center gap-3 mb-3">
+            <Briefcase className="text-purple-400"/>
+            <h3 className="text-gray-300 text-sm">
+              Most Practiced Role
+            </h3>
+          </div>
+
+          <p className="text-lg font-semibold text-white">
+            {stats.mostPracticedRole || "N/A"}
+          </p>
+
+        </div>
+
       </div>
 
-      {/* Scheduled Interviews Section - Only show if there are interviews */}
-      {!loading && scheduledInterviews.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-200">
-              Scheduled Interviews
+      {/* =========================
+         ACTION CARDS
+      ========================== */}
+
+      <div className="grid md:grid-cols-2 gap-6 mb-10">
+
+        <Link
+          href={'InterviewDashboard/CreateInterview'}
+          className="bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-purple-500 transition"
+        >
+
+          <Video className="text-blue-400 mb-4"/>
+
+          <h3 className="text-xl text-white font-semibold">
+            Create New Interview
+          </h3>
+
+          <p className="text-gray-400">
+            Generate AI interview questions
+          </p>
+
+        </Link>
+
+
+        <Link
+          href={'InterviewDashboard/History'}
+          className="bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-purple-500 transition"
+        >
+
+          <View className="text-purple-400 mb-4"/>
+
+          <h3 className="text-xl text-white font-semibold">
+            View Interviews
+          </h3>
+
+          <p className="text-gray-400">
+            See scheduled and past interviews
+          </p>
+
+        </Link>
+
+      </div>
+
+      {/* =========================
+         SCHEDULED INTERVIEWS
+      ========================== */}
+
+      {scheduledInterviews.length > 0 && (
+
+        <div>
+
+          <div className="flex justify-between mb-6">
+
+            <h2 className="text-xl font-bold text-gray-200">
+              Upcoming Interviews
             </h2>
-            <div className="flex gap-3">
-              <Link 
-                href={'InterviewDashboard/CreateInterview'}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                <Plus className="w-4 h-4" />
-                Create Interview
-              </Link>
-              <Link 
-                href={'InterviewDashboard/ScheduledInterview'}
-                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                See All
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
+
+            <Link
+              href={'InterviewDashboard/ScheduledInterview'}
+              className="flex items-center gap-2 text-blue-400"
+            >
+              See All
+              <ArrowRight size={16}/>
+            </Link>
+
           </div>
 
-          <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 shadow-xl">
-            <div className="overflow-x-auto">
-              {/* Table Header - Horizontal Titles */}
-              <div className="grid grid-cols-6 gap-4 pb-4 border-b border-slate-700/50 mb-4 min-w-[800px]">
-                <div className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-                  Interview Title
-                </div>
-                <div className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-                  Candidate Name
-                </div>
-                <div className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-                  Email
-                </div>
-                <div className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-                  Date
-                </div>
-                <div className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-                  Time
-                </div>
-                <div className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-                  Status
-                </div>
-              </div>
+          <div className="space-y-4">
 
-              {/* Table Body - Vertical Data */}
-              <div className="space-y-3">
-                {scheduledInterviews.map((interview) => (
-                  <div 
-                    key={interview._id}
-                    className="grid grid-cols-6 gap-4 items-center bg-slate-900/50 border border-slate-700/50 rounded-lg p-4 hover:border-purple-500/30 transition-all duration-300 min-w-[800px]"
-                  >
-                    {/* Interview Title */}
-                    <div className="text-sm text-gray-100 font-medium">
+            {scheduledInterviews.map((interview) => (
+
+              <div
+                key={interview._id}
+                className="bg-slate-800 border border-slate-700 rounded-lg p-4"
+              >
+
+                <div className="flex justify-between">
+
+                  <div>
+
+                    <h3 className="text-white font-semibold">
                       {interview.title}
-                    </div>
+                    </h3>
 
-                    {/* Candidate Name */}
-                    <div className="text-sm text-gray-200">
+                    <p className="text-gray-400 text-sm">
                       {interview.candidateName}
-                    </div>
+                    </p>
 
-                    {/* Email */}
-                    <div className="text-xs text-gray-400 truncate">
-                      {interview.candidateEmail}
-                    </div>
-
-                    {/* Date */}
-                    <div className="text-sm text-gray-200">
-                      {formatDate(interview.date)}
-                    </div>
-
-                    {/* Time */}
-                    <div className="text-sm text-gray-200">
-                      {formatTime(interview.time)}
-                      <span className="text-xs text-gray-500 block">
-                        {interview.duration} min
-                      </span>
-                    </div>
-
-                    {/* Status */}
-                    <div>
-                      <span className={`text-xs font-semibold px-3 py-1 rounded-full border inline-block ${getStatusColor(interview.status)}`}>
-                        {interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
-                      </span>
-                    </div>
                   </div>
-                ))}
+
+                  <span className="text-sm text-gray-300">
+                    {interview.date}
+                  </span>
+
+                </div>
+
               </div>
-            </div>
+
+            ))}
+
           </div>
+
         </div>
+        
+
       )}
-
-      {/* Previously Created Interviews - Only show when no scheduled interviews */}
-      {!loading && scheduledInterviews.length === 0 && (
-        <>
-          <h2 className="text-2xl font-bold text-gray-200 mb-6">
-            Previously Created Interviews
-          </h2>
-
-          <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-12 shadow-xl flex flex-col items-center text-center">
-            {interviewList?.length === 0 ? (
+      <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-12 shadow-xl flex flex-col items-center text-center">
+           
               <>
                 <div className="w-20 h-20 bg-blue-600/20 border border-blue-500/30 rounded-2xl flex items-center justify-center mb-6">
                   <Video className="h-10 w-10 text-blue-400" />
                 </div>
-                <p className="text-gray-300 text-base mb-6">
-                  You don't have any interview created!
-                </p>
+               
                 <Link href={'InterviewDashboard/CreateInterview'} className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-xl text-base font-semibold shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all duration-300 transform hover:scale-105">
                   + Create New Interview
                 </Link>
               </>
-            ) : (
-              <div>{/* Map interviews here later */}</div>
-            )}
           </div>
-        </>
-      )}
+
     </div>
   );
 }
